@@ -23,6 +23,8 @@ ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = [
     'https://*.replit.dev',
     'https://*.repl.co',
+    'https://*.onrender.com',
+    'https://*.render.com',
 ]
 
 INSTALLED_APPS = [
@@ -76,28 +78,33 @@ TEMPLATES = [
 WSGI_APPLICATION = 'producao_gamificada.wsgi.application'
 ASGI_APPLICATION = 'producao_gamificada.asgi.application'
 
+# Database - SQLite (local e produção)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
         'CONN_MAX_AGE': 600,
         'OPTIONS': {
-            'timeout': 30,  # 30 segundos de timeout para operações SQLite
+            'timeout': 30,
         }
     }
 }
+
+# Redis Configuration
+REDIS_URL = env('REDIS_URL', default='redis://127.0.0.1:6379/0')
 
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
+            "hosts": [REDIS_URL],
         },
     },
 }
 
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+# Celery
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
