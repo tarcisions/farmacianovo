@@ -1,0 +1,30 @@
+services:
+  # Serviço Web Principal
+  - type: web
+    name: farmacianovo
+    env: python
+    plan: free
+    buildCommand: >
+      pip install -r requirements.txt &&
+      python manage.py collectstatic --noinput
+    startCommand: >
+      daphne -b 0.0.0.0 -p $PORT producao_gamificada.asgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: false
+      - key: ALLOWED_HOSTS
+        value: "*.render.com"
+      - key: REDIS_URL
+        fromService:
+          name: farmacianovo-redis
+          property: connectionString
+
+  # Redis para Cache e WebSockets
+  - type: redis
+    name: farmacianovo-redis
+    plan: free
+    ipAllowList: []
