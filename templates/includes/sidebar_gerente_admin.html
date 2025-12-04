@@ -1,0 +1,91 @@
+{# Sidebar padrão para Gerente e Superadmin #}
+<ul class="nav flex-column">
+    {% if user.is_superuser or user.groups.all.0.name == 'Superadmin' %}
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'superadmin' %}active{% endif %}" href="{% url 'dashboard:superadmin' %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+    </li>
+    {% else %}
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'gerente' %}active{% endif %}" href="{% url 'dashboard:gerente' %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+    </li>
+    {% endif %}
+
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'pedidos' %}active{% endif %}" href="{% url 'dashboard:pedidos' %}">
+            <i class="bi bi-box-seam"></i> Gestão de Pedidos
+        </a>
+    </li>
+
+    <li class="nav-item">
+        {% if user.is_superuser or user.groups.all.0.name == 'Superadmin' or user.groups.all.0.name == 'Gerente' %}
+            <a class="nav-link {% if request.resolver_match.url_name == 'rotas_finalizadas_gerente' %}active{% endif %}" href="{% url 'dashboard:rotas_finalizadas_gerente' %}">
+                <i class="bi bi-check-circle"></i> Rotas Finalizadas
+            </a>
+        {% else %}
+            <a class="nav-link {% if request.resolver_match.url_name == 'rotas_finalizadas' %}active{% endif %}" href="{% url 'dashboard:rotas_finalizadas' %}">
+                <i class="bi bi-check-circle"></i> Rotas Finalizadas
+            </a>
+        {% endif %}
+    </li>
+
+    {% if user.is_superuser or user.groups.all.0.name == 'Superadmin' %}
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'pedidos_concluidos' %}active{% endif %}" href="{% url 'dashboard:pedidos_concluidos' %}">
+            <i class="bi bi-check2-circle"></i> Pedidos Concluídos
+        </a>
+    </li>
+    {% endif %}
+
+    {% if user.is_superuser or user.groups.all.0.name == 'Superadmin' %}
+    <li class="nav-item">
+        <a class="nav-link" href="/admin/">
+            <i class="bi bi-gear"></i> Admin Django
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'etapas' %}active{% endif %}" href="{% url 'workflow:etapas' %}">
+            <i class="bi bi-diagram-3"></i> Etapas
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'checklists' %}active{% endif %}" href="{% url 'workflow:checklists' %}">
+            <i class="bi bi-check2-square"></i> Checklists
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'bonus' %}active{% endif %}" href="{% url 'gamification:bonus' %}">
+            <i class="bi bi-cash-stack"></i> Bônus
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'usuarios' %}active{% endif %}" href="{% url 'core:usuarios' %}">
+            <i class="bi bi-people"></i> Usuários
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'auditoria' %}active{% endif %}" href="{% url 'dashboard:auditoria' %}">
+            <i class="bi bi-shield-check"></i> Auditoria
+        </a>
+    </li>
+    {% else %}
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'pontuacao' %}active{% endif %}" href="{% url 'gamification:pontuacao' %}">
+            <i class="bi bi-star"></i> Pontuação
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'lista_funcionarios' %}active{% endif %}" href="{% url 'dashboard:lista_funcionarios' %}">
+            <i class="bi bi-people"></i> Funcionários
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'penalizacoes' %}active{% endif %}" href="{% url 'dashboard:penalizacoes' %}">
+            <i class="bi bi-exclamation-triangle"></i> Penalizações
+        </a>
+    </li>
+    {% endif %}
+</ul>

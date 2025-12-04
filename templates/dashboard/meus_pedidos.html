@@ -1,0 +1,95 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Meus Pedidos{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:funcionario' %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'dashboard:meus_pedidos' %}">
+            <i class="bi bi-list-task"></i> Meus Pedidos
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:pedidos_disponiveis' %}">
+            <i class="bi bi-play-circle"></i> Pedidos Disponíveis
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:expedicao_motoboy' %}">
+            <i class="bi bi-truck"></i> Rota Motoboy
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:expedicao_sedex' %}">
+            <i class="bi bi-box-seam"></i> Envio Sedex
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:rotas_finalizadas' %}">
+            <i class="bi bi-archive"></i> Rotas Finalizadas
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:historico_etapas' %}">
+            <i class="bi bi-clock-history"></i> Histórico de Etapas
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-list-task text-primary"></i> Meus Pedidos em Andamento</h1>
+</div>
+
+{% if pedidos_assumidos %}
+<div class="row g-4">
+    {% for pedido in pedidos_assumidos %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <strong class="text-primary" style="color: white!important;">ID: <code class="bg-primary">{{ pedido.id_api }}</code></strong>
+                <small style="word-wrap: break-word; white-space: normal;">{{ pedido.nome }}</small>
+            </div>
+            <div class="card-body">
+                <p><strong>IDs:</strong> <br>
+                    <code class="text-muted">IDPEDIDO: {{ pedido.id_pedido_api|default:"-" }}</code> |
+                    <code class="text-muted">IDWEB: {{ pedido.id_pedido_web|default:"-" }}</code>
+                </p>
+                <p><strong>Tipo:</strong> 
+                    {% if pedido.tipo_identificado %}
+                    <span class="badge bg-info">{{ pedido.tipo_identificado|upper }}</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </p>
+                <p><strong>Quantidade:</strong> <span class="badge bg-light text-dark">{{ pedido.quantidade }}</span></p>
+                <p><strong>Etapa Atual:</strong> <span class="badge bg-info">{{ pedido.etapa_atual.nome }}</span></p>
+                <div class="mt-3">
+                    <a href="{% url 'dashboard:trabalhar_pedido' pedido.id %}" class="btn btn-primary">
+                        <i class="bi bi-play-fill"></i> Trabalhar neste Pedido
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-inbox display-1 text-muted"></i>
+        <p class="text-muted mt-3">Você não possui pedidos assumidos no momento.</p>
+        <a href="{% url 'dashboard:pedidos_disponiveis' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Assumir um Pedido
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,102 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Penalizações{% endblock %}
+
+{% block sidebar %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-exclamation-triangle text-danger"></i> Gestão de Penalizações</h1>
+    <a href="{% url 'dashboard:criar_penalizacao' %}" class="btn btn-danger">
+        <i class="bi bi-plus-circle"></i> Nova Penalização
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-funnel"></i> Filtros
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Funcionário</label>
+                <select class="form-select" name="funcionario">
+                    <option value="">Todos</option>
+                    {% for func in funcionarios %}
+                    <option value="{{ func.id }}" {% if funcionario_selecionado|stringformat:"s" == func.id|stringformat:"s" %}selected{% endif %}>
+                        {{ func.get_full_name|default:func.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                    <a href="{% url 'dashboard:penalizacoes' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Limpar
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list-ul"></i> Histórico de Penalizações ({{ penalizacoes.count }})
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Funcionário</th>
+                        <th>Motivo</th>
+                        <th>Pontos</th>
+                        <th>Aplicada Por</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for penalizacao in penalizacoes %}
+                    <tr>
+                        <td><small>{{ penalizacao.timestamp|date:"d/m/Y H:i" }}</small></td>
+                        <td><strong>{{ penalizacao.funcionario.get_full_name|default:penalizacao.funcionario.username }}</strong></td>
+                        <td>{{ penalizacao.motivo }}</td>
+                        <td><span class="badge bg-danger">-{{ penalizacao.pontos }} pts</span></td>
+                        <td>{{ penalizacao.aplicada_por.get_full_name|default:penalizacao.aplicada_por.username }}</td>
+                        <td>
+                            {% if penalizacao.revertida %}
+                            <span class="badge bg-success">Revertida</span>
+                            <br><small class="text-muted">Por {{ penalizacao.revertida_por.get_full_name }} em {{ penalizacao.revertida_em|date:"d/m/Y H:i" }}</small>
+                            {% else %}
+                            <span class="badge bg-warning">Ativa</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not penalizacao.revertida %}
+                            <button class="btn btn-sm btn-outline-success" onclick="if(confirm('Tem certeza que deseja reverter esta penalização?')) window.location.href='{% url 'dashboard:reverter_penalizacao' penalizacao.id %}'">
+                                <i class="bi bi-arrow-counterclockwise"></i> Reverter
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">Nenhuma penalização registrada</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

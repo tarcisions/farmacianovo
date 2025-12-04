@@ -1,0 +1,60 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Gestão de Checklists{% endblock %}
+
+{% block sidebar %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-check2-square text-primary"></i> Gestão de Checklists</h1>
+    <a href="/admin/core/checklist/add/" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Novo Checklist
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Etapa</th>
+                        <th>Descrição</th>
+                        <th>Pontos</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for checklist in checklists %}
+                    <tr>
+                        <td><strong>{{ checklist.nome }}</strong></td>
+                        <td>
+                            {% if checklist.etapa %}
+                            <span class="badge bg-info">{{ checklist.etapa.nome }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Sem etapa</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ checklist.descricao|truncatewords:20 }}</td>
+                        <td><span class="badge bg-primary">{{ checklist.pontos_do_check }} pts</span></td>
+                        <td>
+                            <a href="/admin/core/checklist/{{ checklist.id }}/change/" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">Nenhum checklist cadastrado</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

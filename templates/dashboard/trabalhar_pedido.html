@@ -1,0 +1,134 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Trabalhar em Pedido #{{ pedido.id }}{% endblock %}
+
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-gear text-primary"></i> Pedido ID: <code>{{ pedido.id_api }}</code> - {{ pedido.etapa_atual.nome }}</h1>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <strong>Informações do Pedido</strong>
+            </div>
+            <div class="card-body">
+                <p><strong>ID API:</strong> <code class="text-primary">{{ pedido.id_api }}</code></p>
+                <p><strong>IDPEDIDO:</strong> <code class="text-muted">{{ pedido.id_pedido_api|default:"-" }}</code></p>
+                <p><strong>IDPEDIDOWEB:</strong> <code class="text-muted">{{ pedido.id_pedido_web|default:"-" }}</code></p>
+                <p><strong>Nome:</strong> <small style="word-wrap: break-word; white-space: normal;">{{ pedido.nome }}</small></p>
+                <p><strong>Tipo:</strong> 
+                    {% if pedido.tipo_identificado %}
+                    <span class="badge bg-info">{{ pedido.tipo_identificado|upper }}</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </p>
+                <p><strong>Quantidade:</strong> <span class="badge bg-light text-dark">{{ pedido.quantidade }}</span></p>
+                <p><strong>Etapa:</strong> <span class="badge bg-primary">{{ pedido.etapa_atual.nome }}</span></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        {% if etapa_expedicao %}
+        <!-- Tela de escolha para Expedição -->
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <strong><i class="bi bi-signpost-2"></i> Selecione o tipo de Rota</strong>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Este pedido está na etapa de <strong>Expedição</strong>. Escolha como deseja enviar:</p>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <a href="{% url 'dashboard:expedicao_motoboy' %}" class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column justify-content-center align-items-center p-4" style="text-decoration: none; color: inherit;">
+                            <i class="bi bi-truck" style="font-size: 3rem; color: #0d6efd; margin-bottom: 1rem;"></i>
+                            <strong>Rota Motoboy</strong>
+                            <small class="text-muted mt-2">Selecione sua rota e finalize</small>
+                        </a>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <a href="{% url 'dashboard:expedicao_sedex' %}" class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column justify-content-center align-items-center p-4" style="text-decoration: none; color: inherit;">
+                            <i class="bi bi-box-seam" style="font-size: 3rem; color: #198754; margin-bottom: 1rem;"></i>
+                            <strong>Envio Sedex</strong>
+                            <small class="text-muted mt-2">Selecione seu envio e finalize</small>
+                        </a>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+                
+                <a href="{% url 'dashboard:meus_pedidos' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar para Meus Pedidos
+                </a>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Tela normal para outras etapas -->
+        <div class="card">
+            <div class="card-header">
+                <strong>Executar Etapa</strong>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'dashboard:concluir_etapa' pedido.id %}">
+                    {% csrf_token %}
+
+                    {% if pedido.etapa_atual.se_possui_checklists %}
+                    <h5 class="mb-3">Checklists</h5>
+                    {% for exec_check in checklists_execucao %}
+                    <div class="form-check mb-3">
+                        <div class="d-flex justify-content-between align-items-center p-3 border rounded {% if exec_check.marcado %}bg-success bg-opacity-10{% endif %}">
+                            <div>
+                                <strong>{{ exec_check.checklist.nome }}</strong>
+                                {% if exec_check.checklist.descricao %}
+                                <p class="small text-muted mb-0">{{ exec_check.checklist.descricao }}</p>
+                                {% endif %}
+                            </div>
+                            <a href="{% url 'dashboard:marcar_checklist' exec_check.id %}" 
+                               class="btn btn-sm {% if exec_check.marcado %}btn-success{% else %}btn-outline-secondary{% endif %}">
+                                {% if exec_check.marcado %}
+                                <i class="bi bi-check-circle-fill"></i> Marcado
+                                {% else %}
+                                <i class="bi bi-circle"></i> Marcar
+                                {% endif %}
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <hr>
+                    {% endif %}
+
+                    {% if pedido.etapa_atual.se_possui_calculo_por_quantidade %}
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Quantidade Produzida</strong></label>
+                        <input type="number" name="quantidade_produzida" class="form-control" value="{{ pedido.quantidade }}" required>
+                        <small class="text-muted">A pontuação será calculada com base na quantidade produzida.</small>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label">Observações (opcional)</label>
+                        <textarea name="observacoes" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Concluir Etapa
+                        </button>
+                        <a href="{% url 'dashboard:meus_pedidos' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

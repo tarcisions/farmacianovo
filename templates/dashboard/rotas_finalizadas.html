@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Rotas Finalizadas{% endblock %}
+
+{% block sidebar %}
+{% if is_gestor %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% else %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:funcionario' %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:meus_pedidos' %}">
+            <i class="bi bi-list-task"></i> Meus Pedidos
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:pedidos_disponiveis' %}">
+            <i class="bi bi-play-circle"></i> Pedidos Disponíveis
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:expedicao_motoboy' %}">
+            <i class="bi bi-truck"></i> Rota Motoboy
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:expedicao_sedex' %}">
+            <i class="bi bi-box-seam"></i> Envio Sedex
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'dashboard:rotas_finalizadas' %}">
+            <i class="bi bi-archive"></i> Rotas Finalizadas
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:historico_etapas' %}">
+            <i class="bi bi-clock-history"></i> Histórico de Etapas
+        </a>
+    </li>
+</ul>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-check-circle text-success"></i> Rotas Finalizadas</h1>
+    {% if is_gestor %}
+    <form method="get" class="row g-2 align-items-end mb-3">
+        <div class="col-md-4">
+            <label for="filtro_funcionario" class="form-label mb-1">Filtrar por Funcionário</label>
+            <select class="form-select" id="filtro_funcionario" name="funcionario">
+                <option value="">Todos</option>
+                {% for func in funcionarios %}
+                <option value="{{ func.id }}" {% if func.id|stringformat:'s' == filtro_funcionario %}selected{% endif %}>{{ func.get_full_name|default:func.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filtrar</button>
+        </div>
+    </form>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+            <thead class="table-light">
+                <tr>
+                    {% if is_gestor %}<th style="width: 150px;">Funcionário</th>{% endif %}
+                    <th style="width: 80px;">ID</th>
+                    <th style="width: 100px;">ID Pedido</th>
+                    <th>Nome do Pedido</th>
+                    <th style="width: 100px;">Tipo</th>
+                    <th style="width: 140px;">Data Finalização</th>
+                    <th style="width: 80px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rota in rotas_finalizadas %}
+                <tr>
+                    {% if is_gestor %}
+                    <td>
+                        <small class="fw-bold">{{ rota.funcionario.get_full_name|default:rota.funcionario.username }}</small>
+                    </td>
+                    {% endif %}
+                    <td>
+                        <span class="badge bg-primary">{{ rota.pedido.id_api }}</span>
+                    </td>
+                    <td>
+                        <code class="text-muted">{{ rota.pedido.id_pedido_api|default:"-" }}</code>
+                    </td>
+                    <td>
+                        <small title="{{ rota.pedido.nome }}">{{ rota.pedido.nome|truncatewords:10 }}</small>
+                    </td>
+                    <td>
+                        {% if rota.pedido.tipo_identificado %}
+                        <span class="badge bg-info">{{ rota.pedido.tipo_identificado|upper|truncatewords:2 }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small class="text-muted">{{ rota.timestamp_fim|date:'d/m/Y H:i' }}</small>
+                    </td>
+                    <td>
+                        <a href="{% url 'dashboard:detalhe_rota_finalizada' rota.id %}" class="btn btn-outline-primary btn-sm" title="Ver detalhes">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{% if is_gestor %}7{% else %}6{% endif %}" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox"></i> Nenhuma rota finalizada encontrada
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Histórico de Etapas - {{ request.user.first_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <div class="main-content">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-1">
+                    <i class="bi bi-clock-history"></i> Histórico de Etapas
+                </h1>
+                <p class="text-muted">Pedidos que você completou e suas etapas</p>
+            </div>
+        </div>
+
+        <!-- Resumo por Pedido -->
+        {% if resumo_etapas %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="mb-0">
+                            <i class="bi bi-bar-chart"></i> Resumo de Pedidos
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for item in resumo_etapas %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card border-start border-3 border-primary h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-primary">{{ item.pedido.nome|truncatewords:5 }}</h6>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div>
+                                                <small class="text-muted">ID: <strong>{{ item.pedido.id_api }}</strong></small>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="h6 mb-0 fw-bold">{{ item.etapas_count }}</div>
+                                                <small class="text-muted">
+                                                    {% if item.etapas_count == 1 %}
+                                                        etapa
+                                                    {% else %}
+                                                        etapas
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Histórico Detalhado -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-check"></i> Última Etapa por Pedido
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                {% if historicos %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 120px;">Data</th>
+                                <th style="width: 140px;">Etapa</th>
+                                <th style="width: 80px;">ID Pedido</th>
+                                <th>Nome do Pedido</th>
+                                <th style="width: 100px;">Tempo Gasto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for historico in historicos %}
+                            <tr>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ historico.timestamp_fim|date:"d/m/Y H:i" }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ historico.etapa.nome }}</span>
+                                </td>
+                                <td class="text-mono">
+                                    <strong>{{ historico.pedido.id_api }}</strong>
+                                </td>
+                                <td>
+                                    <span class="text-decoration-none">
+                                        {{ historico.pedido.nome|truncatewords:5 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small>
+                                        {% if historico.timestamp_fim and historico.timestamp_inicio %}
+                                            {{ historico.tempo_gasto_minutos|default:"-" }} min
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                    <p class="text-muted mt-3">Nenhuma etapa completada ainda</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .text-mono {
+        font-family: 'Courier New', monospace;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        padding: 0 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .main-content {
+            margin-left: 0;
+        }
+    }
+</style>
+{% endblock %}

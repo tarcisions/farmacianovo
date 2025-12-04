@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gerenciador de Sincronização{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h1>🔄 Sincronização Automática da API</h1>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>Status do Scheduler</h5>
+                </div>
+                <div class="card-body">
+                    <div id="status-content">
+                        <p class="text-muted">Carregando...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>Controles</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-success" onclick="iniciarScheduler()" id="btn-iniciar">
+                        ▶️ Iniciar
+                    </button>
+                    <button class="btn btn-warning" onclick="pararScheduler()" id="btn-parar">
+                        ⏹️ Parar
+                    </button>
+                    <button class="btn btn-primary" onclick="sincronizarAgora()" id="btn-agora">
+                        🔔 Sincronizar Agora
+                    </button>
+                    <button class="btn btn-info" onclick="recarregarStatus()">
+                        🔃 Recarregar Status
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>Configuração Atual</h5>
+                </div>
+                <div class="card-body">
+                    <div id="config-content">
+                        <p class="text-muted">Carregando...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-info mt-4">
+                <h6>📝 Como Usar:</h6>
+                <ul>
+                    <li>Para mudar a URL, intervalo ou paginações, edite <code>core/scheduler.py</code></li>
+                    <li>O scheduler inicia automaticamente quando você faz <code>python manage.py runserver</code></li>
+                    <li>Use os botões acima para controlar manualmente</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+async function fazerRequisicao(url, metodo = 'GET') {
+    try {
+        const opcoes = {
+            method: metodo,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            }
+        };
+        
+        const resposta = await fetch(url, opcoes);
+        const dados = await resposta.json();
+        
+        if (dados.sucesso) {
+            mostrarNotificacao(dados.mensagem || 'Sucesso!', 'success');
+        } else {
+            mostrarNotificacao(dados.erro || 'Erro desconhecido', 'danger');
+        }
+        
+        recarregarStatus();
+        return dados;
+    } catch (erro) {
+        mostrarNotificacao('Erro na requisição: ' + erro, 'danger');
+    }
+}
+
+async function iniciarScheduler() {
+    await fazerRequisicao('{% url "core:scheduler_iniciar" %}', 'POST');
+}
+
+async function pararScheduler() {
+    await fazerRequisicao('{% url "core:scheduler_parar" %}', 'POST');
+}
+
+async function sincronizarAgora() {
+    await fazerRequisicao('{% url "core:scheduler_sincronizar" %}', 'POST');
+}
+
+async function recarregarStatus() {
+    try {
+        const resposta = await fetch('{% url "core:scheduler_status" %}');
+        const dados = await resposta.json();
+        
+        if (dados.sucesso) {
+            // Atualizar status
+            const scheduler = dados.scheduler;
+            let statusHTML = `
+                <div class="alert ${scheduler.ativo ? 'alert-success' : 'alert-warning'}">
+                    <strong>Status: ${scheduler.ativo ? '✓ ATIVO' : '✗ INATIVO'}</strong>
+                </div>
+            `;
+            
+            if (scheduler.jobs && scheduler.jobs.length > 0) {
+                statusHTML += '<h6>Jobs Agendados:</h6>';
+                scheduler.jobs.forEach(job => {
+                    statusHTML += `
+                        <div class="mb-3">
+                            <strong>${job.nome}</strong><br>
+                            <small class="text-muted">
+                                ID: ${job.id}<br>
+                                Próxima execução: ${new Date(job.proxima_execucao).toLocaleString('pt-BR')}<br>
+                                Intervalo: ${job.intervalo}
+                            </small>
+                        </div>
+                    `;
+                });
+            }
+            
+            document.getElementById('status-content').innerHTML = statusHTML;
+            
+            // Atualizar configuração
+            const config = dados.configuracao;
+            let configHTML = `
+                <dl>
+                    <dt>URL Base:</dt>
+                    <dd><code>${config.url_base}</code></dd>
+                    
+                    <dt>Intervalo:</dt>
+                    <dd>${config.intervalo_minutos} minuto(s)</dd>
+                    
+                    <dt>Ativo:</dt>
+                    <dd>${config.ativo ? '✓ Sim' : '✗ Não'}</dd>
+                    
+                    <dt>Paginações:</dt>
+                    <dd>
+                        <ul>
+            `;
+            
+            config.paginacoes.forEach(pag => {
+                configHTML += `<li>Página ${pag.pagina}, Tamanho ${pag.tamanho}</li>`;
+            });
+            
+            configHTML += `
+                        </ul>
+                    </dd>
+                </dl>
+            `;
+            
+            document.getElementById('config-content').innerHTML = configHTML;
+        }
+    } catch (erro) {
+        console.error('Erro ao carregar status:', erro);
+    }
+}
+
+function mostrarNotificacao(mensagem, tipo) {
+    const alerta = document.createElement('div');
+    alerta.className = `alert alert-${tipo} alert-dismissible fade show`;
+    alerta.innerHTML = `
+        ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(alerta, container.firstChild);
+    
+    setTimeout(() => alerta.remove(), 5000);
+}
+
+// Carregar status ao abrir a página
+document.addEventListener('DOMContentLoaded', recarregarStatus);
+
+// Atualizar status a cada 30 segundos
+setInterval(recarregarStatus, 30000);
+</script>
+
+<style>
+code {
+    background-color: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+</style>
+{% endblock %}

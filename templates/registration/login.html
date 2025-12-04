@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - Amaren{% endblock %}
+
+{% block login_content %}
+<div class="container">
+    <div class="row justify-content-center align-items-center min-vh-100">
+        <div class="col-md-5">
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-trophy-fill text-primary" style="font-size: 3rem;"></i>
+                        <h2 class="mt-3 fw-bold">Amaren</h2>
+                    </div>
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Usuário ou senha incorretos.
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_username" class="form-label">Usuário</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control" id="id_username" name="username" required autofocus>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="id_password" class="form-label">Senha</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <input type="password" class="form-control" id="id_password" name="password" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 py-2 mb-3">
+                            <i class="bi bi-box-arrow-in-right"></i> Entrar
+                        </button>
+                        
+                        <input type="hidden" name="next" value="{{ next }}">
+                    </form>
+                    
+                    <div class="text-center mt-4 pt-3 border-top">
+                        <small class="text-muted">
+                            <strong>Usuários de teste:</strong><br>
+                            <span class="badge bg-primary">admin / admin123</span>
+                            <span class="badge bg-info">gerente / gerente123</span>
+                            <span class="badge bg-success">func_maria / func123</span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+</style>
+{% endblock %}

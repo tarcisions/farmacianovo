@@ -1,0 +1,68 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Gestão de Etapas{% endblock %}
+
+{% block sidebar %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-diagram-3 text-primary"></i> Gestão de Etapas</h1>
+    <a href="/admin/core/etapa/add/" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Nova Etapa
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Sequência</th>
+                        <th>Nome</th>
+                        <th>Grupo</th>
+                        <th>Gera Pontos</th>
+                        <th>Ativa</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for etapa in etapas %}
+                    <tr>
+                        <td><span class="badge bg-primary">{{ etapa.sequencia }}</span></td>
+                        <td><strong>{{ etapa.nome }}</strong></td>
+                        <td><span class="badge bg-info">{{ etapa.get_grupo_display }}</span></td>
+                        <td>
+                            {% if etapa.se_gera_pontos %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Sim</span>
+                            {% else %}
+                            <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Não</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if etapa.ativa %}
+                            <span class="badge bg-success">Ativa</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inativa</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/admin/core/etapa/{{ etapa.id }}/change/" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Nenhuma etapa cadastrada</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

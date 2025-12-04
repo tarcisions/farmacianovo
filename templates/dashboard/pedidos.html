@@ -1,0 +1,260 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Pedidos{% endblock %}
+
+{% block sidebar %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-box-seam text-primary"></i> Gestão de Pedidos</h1>
+    <a href="/admin/core/pedido/add/" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Novo Pedido
+    </a>
+</div>
+
+<!-- Abas de Status -->
+<ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if not status_filtro or status_filtro == 'em_fluxo' %}active{% endif %}" 
+                onclick="filterByStatus('em_fluxo')" type="button">
+            <i class="bi bi-hourglass-split"></i> Pedidos Abertos
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if status_filtro == 'concluido' %}active{% endif %}" 
+                onclick="filterByStatus('concluido')" type="button">
+            <i class="bi bi-check-circle"></i> Pedidos Concluídos
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" onclick="filterByStatus('')" type="button">
+            <i class="bi bi-list"></i> Todos
+        </button>
+    </li>
+</ul>
+
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-light">
+        <i class="bi bi-funnel"></i> Filtros
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3" id="filter-form">
+            <div class="col-md-2">
+                <label class="form-label">ID API</label>
+                <input type="text" class="form-control" name="id_api" value="{{ id_api_filtro }}" placeholder="Ex: 12345">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">IDPEDIDO</label>
+                <input type="text" class="form-control" name="id_pedido_api" value="{{ id_pedido_api_filtro }}" placeholder="Ex: 60145">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">IDPEDIDOWEB</label>
+                <input type="text" class="form-control" name="id_pedido_web" value="{{ id_pedido_web_filtro }}" placeholder="Ex: 86715">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Nome</label>
+                <input type="text" class="form-control" name="nome" value="{{ nome_filtro }}" placeholder="Buscar por nome...">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status" id="status-filter">
+                    <option value="">Todos</option>
+                    <option value="em_fluxo" {% if status_filtro == 'em_fluxo' %}selected{% endif %}>Em Fluxo</option>
+                    <option value="concluido" {% if status_filtro == 'concluido' %}selected{% endif %}>Concluído</option>
+                    <option value="cancelado" {% if status_filtro == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Etapa</label>
+                <select class="form-select" name="etapa">
+                    <option value="">Todas</option>
+                    {% for etapa in todas_etapas %}
+                    <option value="{{ etapa.id }}" {% if etapa_filtro|stringformat:"s" == etapa.id|stringformat:"s" %}selected{% endif %}>
+                        {{ etapa.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Funcionário</label>
+                <select class="form-select" name="funcionario">
+                    <option value="">Todos</option>
+                    {% for func in todos_funcionarios %}
+                    <option value="{{ func.id }}" {% if funcionario_filtro|stringformat:"s" == func.id|stringformat:"s" %}selected{% endif %}>
+                        {{ func.get_full_name|default:func.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'dashboard:pedidos' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Limpar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <i class="bi bi-list-ul"></i> Lista de Pedidos ({{ page_obj.paginator.count }})
+            </div>
+            <div class="col-md-6 text-end">
+                {% if page_obj.has_other_pages %}
+                <small class="text-muted">Exibindo {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ page_obj.paginator.count }}</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>IDPEDIDO</th>
+                        <th>IDPEDIDOWEB</th>
+                        <th>Nome</th>
+                        <th>Tipo</th>
+                        <th>QTD</th>
+                        <th>Status</th>
+                        <th>Etapa</th>
+                        <th>Funcionário</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pedido in page_obj %}
+                    <tr>
+                        <td>
+                            <strong class="text-primary">{{ pedido.id_api|default:"N/A" }}</strong>
+                        </td>
+                        <td>
+                            <code class="text-muted">{{ pedido.id_pedido_api|default:"-" }}</code>
+                        </td>
+                        <td>
+                            <code class="text-muted">{{ pedido.id_pedido_web|default:"-" }}</code>
+                        </td>
+                        <td style="word-wrap: break-word; white-space: normal;">
+                            {{ pedido.nome }}
+                        </td>
+                        <td>
+                            {% if pedido.tipo %}
+                            <span class="badge bg-info">{{ pedido.tipo.nome }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ pedido.quantidade }}</span>
+                        </td>
+                        <td>
+                            {% if pedido.status == 'em_fluxo' %}
+                            <span class="badge bg-primary">{{ pedido.get_status_display }}</span>
+                            {% elif pedido.status == 'concluido' %}
+                            <span class="badge bg-success">{{ pedido.get_status_display }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ pedido.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ pedido.etapa_atual.nome|default:"-" }}</td>
+                        <td>
+                            {% if pedido.funcionario_na_etapa %}
+                                <small>{{ pedido.funcionario_na_etapa.get_full_name|default:pedido.funcionario_na_etapa.username }}</small>
+                            {% elif pedido.historico_etapas.all %}
+                                {% with ultimo=pedido.historico_etapas.all|first %}
+                                <small class="text-muted">{{ ultimo.funcionario.get_full_name|default:ultimo.funcionario.username }}</small>
+                                {% endwith %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/admin/core/pedido/{{ pedido.id }}/change/" class="btn btn-sm btn-outline-primary" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center text-muted">Nenhum pedido encontrado</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Paginação -->
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-light">
+        <nav aria-label="Paginação de pedidos">
+            <ul class="pagination justify-content-center mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Primeira</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Primeira</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">Anterior</span>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active" aria-current="page">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Próxima</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Última</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Próxima</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">Última</span>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterByStatus(status) {
+    const form = document.getElementById('filter-form');
+    const statusFilter = document.getElementById('status-filter');
+    statusFilter.value = status;
+    form.submit();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar Usuário{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Editar Usuário: {{ usuario.username }}</h4>
+                </div>
+                <div class="card-body">
+                    {% if erros %}
+                    <div class="alert alert-danger" role="alert">
+                        <h5>Erros encontrados:</h5>
+                        <ul class="mb-0">
+                            {% for erro in erros %}
+                            <li>{{ erro }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">Nome de Usuário</label>
+                                <input type="text" class="form-control" id="username" 
+                                       value="{{ usuario.username }}" disabled>
+                                <small class="form-text text-muted">Não é possível alterar o nome de usuário</small>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ usuario.email }}" required>
+                                <div class="invalid-feedback">
+                                    Email válido é obrigatório.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">Primeiro Nome</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" 
+                                       value="{{ usuario.first_name }}">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">Sobrenome</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" 
+                                       value="{{ usuario.last_name }}">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="grupo" class="form-label">Grupo/Função *</label>
+                                <select class="form-select" id="grupo" name="grupo" required>
+                                    <option value="">Selecione um grupo...</option>
+                                    {% for grupo in grupos_disponiveis %}
+                                    <option value="{{ grupo.name }}" 
+                                            {% if grupo.name == grupo_atual %}selected{% endif %}>
+                                        {{ grupo.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="invalid-feedback">
+                                    Selecione um grupo para o usuário.
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="ativo" name="ativo" 
+                                           {% if usuario.is_active %}checked{% endif %}>
+                                    <label class="form-check-label" for="ativo">
+                                        Usuário Ativo
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <p class="text-muted">
+                                <strong>Informações do Sistema:</strong><br>
+                                Data de Criação: {{ usuario.date_joined|date:"d/m/Y H:i" }}<br>
+                                Último Acesso: {% if usuario.last_login %}{{ usuario.last_login|date:"d/m/Y H:i" }}{% else %}Nunca acessou{% endif %}
+                            </p>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Atualizar Usuário</button>
+                            <a href="{% url 'core:usuarios' %}" class="btn btn-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Validação do formulário
+    (() => {
+        'use strict'
+        const forms = document.querySelectorAll('.needs-validation')
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+</script>
+{% endblock %}

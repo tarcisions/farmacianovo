@@ -1,0 +1,49 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Pontuação dos Funcionários{% endblock %}
+
+{% block sidebar %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-star text-primary"></i> Pontuação dos Funcionários</h1>
+</div>
+
+<div class="row g-4">
+    {% for item in pontuacao_dados %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <strong>{{ item.funcionario.get_full_name }}</strong>
+                <span class="badge bg-primary float-end">{{ item.pontos_mes }} pts (mês)</span>
+            </div>
+            <div class="card-body">
+                <h6>Últimas Pontuações:</h6>
+                <ul class="list-group list-group-flush">
+                    {% for ponto in item.historico %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>
+                            <small class="text-muted">{{ ponto.timestamp|date:"d/m H:i" }}</small>
+                            - {{ ponto.get_origem_display }}
+                        </span>
+                        <span class="badge bg-{% if ponto.pontos >= 0 %}success{% else %}danger{% endif %}">
+                            {{ ponto.pontos|floatformat:2 }} pts
+                        </span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-muted">Sem pontuação ainda</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <p class="text-center text-muted">Nenhum funcionário cadastrado</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Funcionário{% endblock %}
+
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-speedometer2 text-primary"></i> Meu Dashboard</h1>
+    <span class="badge badge-custom bg-success">Funcionário</span>
+</div>
+
+<!-- Cards de Estatísticas Principais -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <p class="text-muted mb-1 small">
+                            <i class="bi bi-star-fill text-warning"></i> Pontos do Mês
+                        </p>
+                        <h3 class="mb-0">{{ pontos_mes_atual|floatformat:1 }}</h3>
+                    </div>
+                    <div class="text-warning" style="font-size: 2.5rem;">
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <p class="text-muted mb-1 small">
+                            <i class="bi bi-list-task"></i> Pedidos Ativos
+                        </p>
+                        <h3 class="mb-0">{{ pedidos_trabalhados }}</h3>
+                    </div>
+                    <div class="text-info" style="font-size: 2.5rem;">
+                        <i class="bi bi-list-task"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <p class="text-muted mb-1 small">
+                            <i class="bi bi-check-circle"></i> Etapas Concluídas
+                        </p>
+                        <h3 class="mb-0">{{ etapas_concluidas|length }}</h3>
+                    </div>
+                    <div class="text-success" style="font-size: 2.5rem;">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <p class="text-muted mb-1 small">
+                            <i class="bi bi-cash-coin"></i> Bônus Estimado
+                        </p>
+                        <h3 class="mb-0">{% if faixa_bonus %}R$ {{ faixa_bonus.valor_em_reais|floatformat:2 }}{% else %}R$ 0,00{% endif %}</h3>
+                    </div>
+                    <div class="text-success" style="font-size: 2.5rem;">
+                        <i class="bi bi-cash-coin"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Faixa de Bônus -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0"><i class="bi bi-trophy"></i> Progresso para Próximo Bônus</h5>
+            </div>
+            <div class="card-body">
+                {% if faixa_bonus %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small">Faixa Atual: <strong>{{ faixa_bonus.faixa_min|floatformat:0 }} - {{ faixa_bonus.faixa_max|floatformat:0 }} pts</strong></span>
+                        <span class="badge bg-success">R$ {{ faixa_bonus.valor_em_reais|floatformat:2 }}</span>
+                    </div>
+                    <div class="progress" style="height: 30px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {% widthratio pontos_mes_atual faixa_bonus.faixa_max 100 %}%;"
+                             aria-valuenow="{{ pontos_mes_atual }}" aria-valuemin="0" aria-valuemax="{{ faixa_bonus.faixa_max }}">
+                            <strong>{{ pontos_mes_atual|floatformat:0 }} / {{ faixa_bonus.faixa_max|floatformat:0 }} pts</strong>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-info-circle"></i> Você está na faixa de bônus <strong>R$ {{ faixa_bonus.valor_em_reais|floatformat:2 }}</strong>
+                </p>
+                {% else %}
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-lightbulb"></i> Continue trabalhando para alcançar uma faixa de bônus!
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Evolução de Pontos</h5>
+            </div>
+            <div class="card-body d-flex justify-content-center align-items-center" style="min-height: 300px;">
+                <canvas id="pontosChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0"><i class="bi bi-list-check"></i> Pedidos por Etapa</h5>
+            </div>
+            <div class="card-body d-flex justify-content-center align-items-center" style="min-height: 300px;">
+                <canvas id="etapasChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Dados reais do servidor
+const diasLabels = {{ dias_labels|safe }};
+const diasData = {{ dias_data|safe }};
+
+const ctxPontos = document.getElementById('pontosChart').getContext('2d');
+const pontosChart = new Chart(ctxPontos, {
+    type: 'line',
+    data: {
+        labels: diasLabels,
+        datasets: [{
+            label: 'Pontos Acumulados',
+            data: diasData,
+            borderColor: 'rgb(79, 70, 229)',
+            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+            borderWidth: 2,
+            tension: 0.4,
+            fill: true,
+            pointRadius: 4,
+            pointBackgroundColor: 'rgb(79, 70, 229)',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointHoverRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                padding: 12,
+                titleFont: { size: 14 },
+                bodyFont: { size: 13 },
+                callbacks: {
+                    label: function(context) {
+                        return 'Pontos: ' + context.parsed.y;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return value + ' pts';
+                    }
+                },
+                grid: {
+                    drawBorder: false,
+                    color: 'rgba(0,0,0,0.05)'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        },
+        interaction: {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false
+        }
+    }
+});
+
+const ctxEtapas = document.getElementById('etapasChart').getContext('2d');
+const etapasChart = new Chart(ctxEtapas, {
+    type: 'bar',
+    data: {
+        labels: [{% for etapa in etapas_concluidas %}'{{ etapa.etapa__nome }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Pedidos Finalizados',
+            data: [{% for etapa in etapas_concluidas %}{{ etapa.quantidade|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
+            backgroundColor: 'rgba(16, 185, 129, 0.8)',
+            borderRadius: 8
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

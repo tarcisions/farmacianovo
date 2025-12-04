@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Gerente{% endblock %}
+
+{% block sidebar %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-bar-chart-line text-primary"></i> Dashboard da Equipe</h1>
+    <div>
+        <span class="badge badge-custom bg-info">Gerente</span>
+        <a href="{% url 'dashboard:exportar_relatorio_gerente' %}" class="btn btn-primary btn-sm ms-2">
+            <i class="bi bi-download"></i> Exportar Relatório
+        </a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Funcionário</label>
+                <select name="funcionario" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todos</option>
+                    {% for func in todos_funcionarios %}
+                    <option value="{{ func.id }}" {% if funcionario_selecionado == func.id|stringformat:"s" %}selected{% endif %}>
+                        {{ func.get_full_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Etapa</label>
+                <select name="etapa" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todas</option>
+                    {% for etapa in todas_etapas %}
+                    <option value="{{ etapa.id }}" {% if etapa_selecionada == etapa.id|stringformat:"s" %}selected{% endif %}>
+                        {{ etapa.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todos</option>
+                    <option value="em_fluxo" {% if status_selecionado == "em_fluxo" %}selected{% endif %}>Em Fluxo</option>
+                    <option value="concluido" {% if status_selecionado == "concluido" %}selected{% endif %}>Concluído</option>
+                    <option value="cancelado" {% if status_selecionado == "cancelado" %}selected{% endif %}>Cancelado</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <a href="{% url 'dashboard:gerente' %}" class="btn btn-secondary w-100">
+                    <i class="bi bi-x-circle"></i> Limpar Filtros
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center justify-content-between p-3">
+                <div>
+                    <div class="text-muted small mb-1">Em Andamento</div>
+                    <div class="h4 mb-0 fw-bold text-info">{{ pedidos_em_fluxo }}</div>
+                </div>
+                <div class="text-info" style="font-size: 2rem; opacity: 0.8;">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center justify-content-between p-3">
+                <div>
+                    <div class="text-muted small mb-1">Concluídos (Mês)</div>
+                    <div class="h4 mb-0 fw-bold text-success">{{ pedidos_concluidos_mes }}</div>
+                </div>
+                <div class="text-success" style="font-size: 2rem; opacity: 0.8;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center justify-content-between p-3">
+                <div>
+                    <div class="text-muted small mb-1">Funcionários</div>
+                    <div class="h4 mb-0 fw-bold text-primary">{{ pontuacao_funcionarios|length }}</div>
+                </div>
+                <div class="text-primary" style="font-size: 2rem; opacity: 0.8;">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center justify-content-between p-3">
+                <div>
+                    <div class="text-muted small mb-1">Pontos Distribuídos</div>
+                    <div class="h4 mb-0 fw-bold text-warning">{{ total_pontos_distribuidos|floatformat:0|default:"0" }}</div>
+                </div>
+                <div class="text-warning" style="font-size: 2rem; opacity: 0.8;">
+                    <i class="bi bi-star-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Conteúdo Principal: Ranking + Gráficos -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0"><i class="bi bi-trophy"></i> Top 10 Funcionários (Mês)</h5>
+            </div>
+            <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                <div class="table-responsive mb-0">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50px;">Pos</th>
+                                <th>Nome</th>
+                                <th style="width: 80px;">Pontos</th>
+                                <th style="width: 100px;">Bônus</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in pontuacao_funcionarios|slice:":10" %}
+                            <tr>
+                                <td>
+                                    {% if forloop.counter == 1 %}
+                                    <span class="badge bg-warning">🥇</span>
+                                    {% elif forloop.counter == 2 %}
+                                    <span class="badge bg-secondary">🥈</span>
+                                    {% elif forloop.counter == 3 %}
+                                    <span class="badge bg-danger">🥉</span>
+                                    {% else %}
+                                    <span class="badge bg-light text-dark">{{ forloop.counter }}</span>
+                                    {% endif %}
+                                </td>
+                                <td><small>{{ item.funcionario.get_full_name|truncatewords:2 }}</small></td>
+                                <td><strong>{{ item.pontos|floatformat:0 }}</strong></td>
+                                <td>
+                                    {% if item.faixa %}
+                                    <span class="badge bg-success">R$ {{ item.faixa.valor_em_reais|floatformat:2 }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-3">Sem dados</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0"><i class="bi bi-kanban"></i> Pedidos por Etapa</h5>
+            </div>
+            <div class="card-body d-flex justify-content-center align-items-center" style="height: 350px;">
+                <canvas id="pedidosEtapaChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos Bottom -->
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Produção Mensal</h5>
+            </div>
+            <div class="card-body d-flex justify-content-center align-items-center" style="height: 250px;">
+                <canvas id="producaoChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Status dos Pedidos</h5>
+            </div>
+            <div class="card-body d-flex justify-content-center align-items-center" style="height: 250px;">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ctxEtapa = document.getElementById('pedidosEtapaChart').getContext('2d');
+new Chart(ctxEtapa, {
+    type: 'doughnut',
+    data: {
+        labels: [{% for item in pedidos_por_etapa %}'{{ item.etapa_atual__nome|default:"Sem Etapa" }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            data: [{% for item in pedidos_por_etapa %}{{ item.total }}{% if not forloop.last %},{% endif %}{% endfor %}],
+            backgroundColor: [
+                'rgba(79, 70, 229, 0.8)',
+                'rgba(6, 182, 212, 0.8)',
+                'rgba(16, 185, 129, 0.8)',
+                'rgba(245, 158, 11, 0.8)',
+                'rgba(239, 68, 68, 0.8)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+const ctxProducao = document.getElementById('producaoChart').getContext('2d');
+new Chart(ctxProducao, {
+    type: 'line',
+    data: {
+        labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'],
+        datasets: [{
+            label: 'Pedidos Concluídos',
+            data: [12, 19, 15, {{ pedidos_concluidos_mes }}],
+            borderColor: 'rgb(16, 185, 129)',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true
+    }
+});
+
+const ctxStatus = document.getElementById('statusChart').getContext('2d');
+new Chart(ctxStatus, {
+    type: 'pie',
+    data: {
+        labels: ['Pendentes', 'Em Fluxo', 'Concluídos'],
+        datasets: [{
+            data: [{{ pedidos_pendentes }}, {{ pedidos_em_fluxo }}, {{ pedidos_concluidos_mes }}],
+            backgroundColor: [
+                'rgba(245, 158, 11, 0.8)',
+                'rgba(6, 182, 212, 0.8)',
+                'rgba(16, 185, 129, 0.8)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'right'
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Auditoria - Sistema de Produção{% endblock %}
+
+{% block sidebar %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-0">
+                <i class="bi bi-shield-check"></i> Logs de Auditoria
+            </h2>
+            <p class="text-muted">Total de registros: <strong>{{ total_logs }}</strong></p>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Filtros de Busca</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="usuario" class="form-label">Usuário</label>
+                    <input type="text" class="form-control" id="usuario" name="usuario" 
+                           value="{{ usuario_filtro }}" placeholder="Nome de usuário">
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="acao" class="form-label">Ação</label>
+                    <select class="form-select" id="acao" name="acao">
+                        <option value="">Todas as ações</option>
+                        {% for acao in acoes_disponiveis %}
+                            <option value="{{ acao }}" {% if acao == acao_filtro %}selected{% endif %}>
+                                {{ acao|title }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <label for="data_inicio" class="form-label">Data Início</label>
+                    <input type="date" class="form-control" id="data_inicio" name="data_inicio" 
+                           value="{{ data_inicio }}">
+                </div>
+                
+                <div class="col-md-2">
+                    <label for="data_fim" class="form-label">Data Fim</label>
+                    <input type="date" class="form-control" id="data_fim" name="data_fim" 
+                           value="{{ data_fim }}">
+                </div>
+                
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                </div>
+            </form>
+
+            <form method="get" class="mt-3">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label for="busca" class="form-label">Busca Geral</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="busca" name="busca" 
+                                   value="{{ busca }}" placeholder="Procurar em descrição, usuário ou IP...">
+                            <button class="btn btn-outline-secondary" type="submit">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            {% if busca or usuario_filtro or acao_filtro or data_inicio or data_fim %}
+                                <a href="{% url 'dashboard:auditoria' %}" class="btn btn-outline-danger">
+                                    <i class="fas fa-times"></i> Limpar Filtros
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de Logs -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Usuário</th>
+                        <th>Ação</th>
+                        <th>Descrição</th>
+                        <th>IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if logs %}
+                        {% for log in logs %}
+                            <tr>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ log.timestamp|date:"d/m/Y H:i:s" }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <strong>{{ log.usuario.get_full_name|default:log.usuario.username }}</strong>
+                                    <br>
+                                    <small class="text-muted">@{{ log.usuario.username }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ log.acao|title }}</span>
+                                </td>
+                                <td>
+                                    <small>{{ log.descricao }}</small>
+                                    {% if log.dados_adicionais %}
+                                        <br>
+                                        <small class="text-muted" style="word-break: break-all;">
+                                            {{ log.dados_adicionais|truncatewords:50 }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <code>{{ log.ip_address }}</code>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <i class="fas fa-inbox text-muted fa-2x"></i>
+                                <p class="text-muted mt-2">Nenhum log encontrado com os filtros aplicados</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Paginação -->
+    {% if logs.has_other_pages %}
+        <nav aria-label="Paginação" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if logs.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if acao_filtro %}&acao={{ acao_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}{% if busca %}&busca={{ busca }}{% endif %}">
+                            Primeira
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ logs.previous_page_number }}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if acao_filtro %}&acao={{ acao_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}{% if busca %}&busca={{ busca }}{% endif %}">
+                            Anterior
+                        </a>
+                    </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">
+                        Página {{ logs.number }} de {{ logs.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if logs.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ logs.next_page_number }}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if acao_filtro %}&acao={{ acao_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}{% if busca %}&busca={{ busca }}{% endif %}">
+                            Próxima
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ logs.paginator.num_pages }}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if acao_filtro %}&acao={{ acao_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}{% if busca %}&busca={{ busca }}{% endif %}">
+                            Última
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+
+<style>
+    table code {
+        background-color: #f5f5f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.85em;
+    }
+    
+    .badge {
+        font-size: 0.8em;
+        padding: 4px 8px;
+    }
+</style>
+{% endblock %}

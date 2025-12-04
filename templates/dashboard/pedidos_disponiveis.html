@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+
+{% block title %}Pedidos Disponíveis{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:funcionario' %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:meus_pedidos' %}">
+            <i class="bi bi-list-task"></i> Meus Pedidos
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'dashboard:pedidos_disponiveis' %}">
+            <i class="bi bi-play-circle"></i> Pedidos Disponíveis
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:expedicao_motoboy' %}">
+            <i class="bi bi-truck"></i> Rota Motoboy
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:expedicao_sedex' %}">
+            <i class="bi bi-box-seam"></i> Envio Sedex
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:rotas_finalizadas' %}">
+            <i class="bi bi-check-circle"></i> Rotas Finalizadas
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:historico_etapas' %}">
+            <i class="bi bi-clock-history"></i> Histórico de Etapas
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-play-circle text-primary"></i> Pedidos Disponíveis para Assumir</h1>
+</div>
+
+<form method="get" class="card p-3 mb-4" id="filtroForm">
+    <div class="row g-3">
+        <div class="col-12 col-md-6">
+            <label for="filtro_nome" class="form-label">Nome do Pedido</label>
+            <input type="text" class="form-control" id="filtro_nome" name="nome" value="{{ filtro_nome }}" placeholder="Buscar por nome...">
+        </div>
+        <div class="col-6 col-md-3">
+            <label for="filtro_etapa" class="form-label">Etapa</label>
+            <select class="form-select" id="filtro_etapa" name="etapa">
+                <option value="">Todas</option>
+                {% for etapa in etapas %}
+                <option value="{{ etapa.id }}" {% if etapa.id|stringformat:'s' == filtro_etapa %}selected{% endif %}>{{ etapa.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label for="filtro_tipo" class="form-label">Tipo</label>
+            <select class="form-select" id="filtro_tipo" name="tipo">
+                <option value="">Todos</option>
+                {% for tipo in tipos %}
+                <option value="{{ tipo.id }}" {% if tipo.id|stringformat:'s' == filtro_tipo %}selected{% endif %}>{{ tipo.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <label for="filtro_ids" class="form-label">Buscar por ID (API / Pedido / Web)</label>
+            <div class="input-group">
+                <input type="text" class="form-control" id="filtro_ids" placeholder="Digite qualquer ID..." 
+                       value="{% if filtro_id_api %}{{ filtro_id_api }}{% elif filtro_id_pedido %}{{ filtro_id_pedido }}{% elif filtro_id_pedido_web %}{{ filtro_id_pedido_web }}{% endif %}">
+                <button class="btn btn-primary" type="submit" onclick="return preencherIDs()">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'dashboard:pedidos_disponiveis' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-clockwise"></i> Limpar
+                </a>
+            </div>
+        </div>
+    </div>
+    <input type="hidden" name="id_api" id="id_api_hidden">
+    <input type="hidden" name="id_pedido" id="id_pedido_hidden">
+    <input type="hidden" name="id_pedido_web" id="id_pedido_web_hidden">
+</form>
+
+<script>
+function preencherIDs() {
+    const valor = document.getElementById('filtro_ids').value.trim();
+    
+    // Limpar campos hidden
+    document.getElementById('id_api_hidden').value = '';
+    document.getElementById('id_pedido_hidden').value = '';
+    document.getElementById('id_pedido_web_hidden').value = '';
+    
+    // Colocar o valor em UMA única tabela para busca específica
+    // Você pode adicionar lógica para detectar qual tipo de ID é
+    if (valor) {
+        document.getElementById('id_api_hidden').value = valor;
+    }
+    
+    return true; // Permite o submit do formulário
+}
+
+// Permitir Enter no campo de busca
+document.getElementById('filtro_ids').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        preencherIDs();
+        document.getElementById('filtroForm').submit();
+    }
+});
+</script>
+
+{% if page_obj %}
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <p class="mb-0 text-muted">
+                    Exibindo {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ page_obj.paginator.count }} pedidos
+                </p>
+            </div>
+            <div class="col-md-6 text-end">
+                <span class="badge bg-primary">Total: {{ page_obj.paginator.count }} pedidos</span>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>IDPEDIDO</th>
+                        <th>IDPEDIDOWEB</th>
+                        <th>Nome</th>
+                        <th>Tipo</th>
+                        <th>QTD</th>
+                        <th>Etapa</th>
+                        <th>Atualizado em</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pedido in page_obj %}
+                    <tr>
+                        <td><strong class="text-primary">{{ pedido.id_api|default:"N/A" }}</strong></td>
+                        <td><code class="text-muted">{{ pedido.id_pedido_api|default:"-" }}</code></td>
+                        <td><code class="text-muted">{{ pedido.id_pedido_web|default:"-" }}</code></td>
+                        <td style="word-wrap: break-word; white-space: normal;"><small>{{ pedido.nome }}</small></td>
+                        <td>
+                            {% if pedido.tipo_identificado %}
+                            <span class="badge bg-info">{{ pedido.tipo_identificado|upper }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">-</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-light text-dark">{{ pedido.quantidade }}</span></td>
+                        <td>
+                            {% if pedido.etapa_atual %}
+                            <span class="badge bg-primary">{{ pedido.etapa_atual.nome }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">-</span>
+                            {% endif %}
+                        </td>
+                        <td><small class="text-muted">
+                            {% if pedido.data_atualizacao_api and pedido.hora_atualizacao_api %}
+                                {{ pedido.data_atualizacao_api|date:"d/m/Y" }} {{ pedido.hora_atualizacao_api|time:"H:i" }}
+                            {% elif pedido.data_atualizacao_api %}
+                                {{ pedido.data_atualizacao_api|date:"d/m/Y" }}
+                            {% else %}
+                                {{ pedido.criado_em|date:"d/m/Y H:i" }}
+                            {% endif %}
+                        </small></td>
+                        <td>
+                            <a href="{% url 'dashboard:assumir_pedido' pedido.id %}" class="btn btn-sm btn-success" 
+                               title="Assumir este pedido">
+                                <i class="bi bi-hand-thumbs-up"></i> Assumir
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Paginação -->
+{% if page_obj.has_other_pages %}
+<nav aria-label="Paginação de pedidos">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1">Primeira</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">Primeira</span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link">Anterior</span>
+        </li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+        <li class="page-item active" aria-current="page">
+            <span class="page-link">{{ num }}</span>
+        </li>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+        </li>
+        {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">Próxima</span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link">Última</span>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-check-circle display-1 text-success"></i>
+        <p class="text-muted mt-3">Não há pedidos disponíveis para assumir no momento.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
