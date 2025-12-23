@@ -217,7 +217,7 @@ class SincronizadorAPI:
     # Configurações padrão - EDITE AQUI para customizar
     CONFIG = {
         'url_base': 'https://b61b2bc163ff.ngrok-free.app/tabelas/FC0M100',
-        'intervalo_minutos': 0.5,  # Mude a URL acima e depois reinicie
+        'intervalo_minutos': 3000,  # Mude a URL acima e depois reinicie
         'paginacoes': [
             {'pagina': 1, 'tamanho': 50},
             # Adicione mais paginações aqui se quiser

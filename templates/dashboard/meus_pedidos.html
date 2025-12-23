@@ -54,11 +54,17 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <strong class="text-primary" style="color: white!important;">ID: <code class="bg-primary">{{ pedido.id_api }}</code></strong>
-                <small style="word-wrap: break-word; white-space: normal;">{{ pedido.nome }}</small>
+                <strong class="text-white">ID: <code class="text-white">{{ pedido.id_api }}</code></strong>
+                <!-- Status Fila Badge -->
+                {% if pedido.status_fila == 'ativo' %}
+                <span class="badge bg-success"><i class="bi bi-play-circle"></i> ATIVO</span>
+                {% else %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-pause-circle"></i> PENDENTE</span>
+                {% endif %}
             </div>
             <div class="card-body">
-                <p><strong>IDs:</strong> <br>
+                <small style="word-wrap: break-word; white-space: normal;">{{ pedido.nome }}</small>
+                <p class="mt-2"><strong>IDs:</strong> <br>
                     <code class="text-muted">IDPEDIDO: {{ pedido.id_pedido_api|default:"-" }}</code> |
                     <code class="text-muted">IDWEB: {{ pedido.id_pedido_web|default:"-" }}</code>
                 </p>
@@ -71,9 +77,17 @@
                 </p>
                 <p><strong>Quantidade:</strong> <span class="badge bg-light text-dark">{{ pedido.quantidade }}</span></p>
                 <p><strong>Etapa Atual:</strong> <span class="badge bg-info">{{ pedido.etapa_atual.nome }}</span></p>
-                <div class="mt-3">
+                <div class="mt-3 d-flex gap-2 flex-wrap">
                     <a href="{% url 'dashboard:trabalhar_pedido' pedido.id %}" class="btn btn-primary">
-                        <i class="bi bi-play-fill"></i> Trabalhar neste Pedido
+                        <i class="bi bi-play-fill"></i> Trabalhar
+                    </a>
+                    <!-- Botão de Toggle Status -->
+                    <a href="{% url 'dashboard:toggle_status_fila' pedido.id %}" class="btn {% if pedido.status_fila == 'ativo' %}btn-warning{% else %}btn-success{% endif %} btn-sm">
+                        {% if pedido.status_fila == 'ativo' %}
+                        <i class="bi bi-pause-circle"></i> Pausar
+                        {% else %}
+                        <i class="bi bi-play-circle"></i> Retomar
+                        {% endif %}
                     </a>
                 </div>
             </div>

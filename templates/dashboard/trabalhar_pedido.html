@@ -3,10 +3,55 @@
 
 {% block title %}Trabalhar em Pedido #{{ pedido.id }}{% endblock %}
 
+<style>
+    /* Remover efeito de hover dos cards de rota */
+    .rota-btn-custom,
+    .rota-btn-custom:visited,
+    .rota-btn-custom:link,
+    .rota-btn-custom:active {
+        transition: none !important;
+        background-color: transparent !important;
+        background-image: none !important;
+        border-color: inherit !important;
+        color: inherit !important;
+    }
+    
+    .rota-btn-custom:hover {
+        background-color: transparent !important;
+        background-image: none !important;
+        border-color: inherit !important;
+        color: inherit !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+    
+    .rota-btn-custom:focus {
+        background-color: transparent !important;
+        background-image: none !important;
+        border-color: inherit !important;
+        color: inherit !important;
+        box-shadow: none !important;
+    }
+    
+    .rota-btn-custom:hover i,
+    .rota-btn-custom:focus i,
+    .rota-btn-custom:active i {
+        color: inherit !important;
+    }
+</style>
 
 {% block content %}
 <div class="mb-4">
     <h1 class="h3 fw-bold"><i class="bi bi-gear text-primary"></i> Pedido ID: <code>{{ pedido.id_api }}</code> - {{ pedido.etapa_atual.nome }}</h1>
+</div>
+
+<!-- Status Fila Badge -->
+<div class="mb-3">
+    {% if pedido.status_fila == 'ativo' %}
+    <span class="badge bg-success fs-6"><i class="bi bi-play-circle"></i> ATIVO</span>
+    {% else %}
+    <span class="badge bg-warning text-dark fs-6"><i class="bi bi-pause-circle"></i> PENDENTE</span>
+    {% endif %}
 </div>
 
 <div class="row g-4">
@@ -37,29 +82,72 @@
         {% if etapa_expedicao %}
         <!-- Tela de escolha para Expedição -->
         <div class="card">
-            <div class="card-header bg-warning text-dark">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
                 <strong><i class="bi bi-signpost-2"></i> Selecione o tipo de Rota</strong>
+                <!-- Status Fila Badge -->
+                {% if pedido.status_fila == 'ativo' %}
+                <span class="badge bg-success"><i class="bi bi-play-circle"></i> ATIVO</span>
+                {% else %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-pause-circle"></i> PENDENTE</span>
+                {% endif %}
             </div>
             <div class="card-body">
                 <p class="text-muted mb-4">Este pedido está na etapa de <strong>Expedição</strong>. Escolha como deseja enviar:</p>
                 
-                <div class="row g-3">
+                {% if pedido.status_fila == 'pendente' %}
+                <div class="alert alert-warning mb-4" role="alert">
+                    <i class="bi bi-exclamation-triangle"></i> <strong>Este pedido está em PENDENTE</strong>. Você precisa ativá-lo antes de escolher a rota de expedição.
+                </div>
+                {% endif %}
+                
+                <div class="row g-3 mb-4">
                     <div class="col-md-6">
-                        <a href="{% url 'dashboard:expedicao_motoboy' %}" class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column justify-content-center align-items-center p-4" style="text-decoration: none; color: inherit;">
+                        {% if pedido.status_fila == 'pendente' %}
+                        <div class="rota-card disabled-card" style="border: 1px solid #0d6efd; border-radius: 0.375rem; padding: 2rem; text-align: center; cursor: not-allowed; opacity: 0.5; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 200px;">
+                            <i class="bi bi-truck" style="font-size: 3rem; color: #0d6efd; margin-bottom: 1rem;"></i>
+                            <strong>Rota Motoboy</strong>
+                            <small class="text-muted mt-2">Ative o pedido para escolher</small>
+                        </div>
+                        {% else %}
+                        <a href="{% url 'dashboard:selecionar_rota' pedido.id 'motoboy' %}" class="rota-card" style="border: 1px solid #0d6efd; border-radius: 0.375rem; padding: 2rem; text-align: center; text-decoration: none; color: inherit; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 200px;">
                             <i class="bi bi-truck" style="font-size: 3rem; color: #0d6efd; margin-bottom: 1rem;"></i>
                             <strong>Rota Motoboy</strong>
                             <small class="text-muted mt-2">Selecione sua rota e finalize</small>
                         </a>
+                        {% endif %}
                     </div>
                     
                     <div class="col-md-6">
-                        <a href="{% url 'dashboard:expedicao_sedex' %}" class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column justify-content-center align-items-center p-4" style="text-decoration: none; color: inherit;">
+                        {% if pedido.status_fila == 'pendente' %}
+                        <div class="rota-card disabled-card" style="border: 1px solid #198754; border-radius: 0.375rem; padding: 2rem; text-align: center; cursor: not-allowed; opacity: 0.5; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 200px;">
+                            <i class="bi bi-box-seam" style="font-size: 3rem; color: #198754; margin-bottom: 1rem;"></i>
+                            <strong>Envio Sedex</strong>
+                            <small class="text-muted mt-2">Ative o pedido para escolher</small>
+                        </div>
+                        {% else %}
+                        <a href="{% url 'dashboard:selecionar_rota' pedido.id 'sedex' %}" class="rota-card" style="border: 1px solid #198754; border-radius: 0.375rem; padding: 2rem; text-align: center; text-decoration: none; color: inherit; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 200px;">
                             <i class="bi bi-box-seam" style="font-size: 3rem; color: #198754; margin-bottom: 1rem;"></i>
                             <strong>Envio Sedex</strong>
                             <small class="text-muted mt-2">Selecione seu envio e finalize</small>
                         </a>
+                        {% endif %}
                     </div>
                 </div>
+
+                <!-- Botão de Toggle Status -->
+                {% if pedido.status_fila == 'pendente' %}
+                <div class="d-flex gap-2 mb-4">
+                    <a href="{% url 'dashboard:toggle_status_fila' pedido.id %}" class="btn btn-primary w-100">
+                        <i class="bi bi-play-circle"></i> Ativar Pedido
+                    </a>
+                </div>
+                {% else %}
+                <div class="d-flex gap-2 mb-4">
+                    <a href="{% url 'dashboard:toggle_status_fila' pedido.id %}" class="btn btn-warning w-100">
+                        <i class="bi bi-pause-circle"></i> Mudar para Pendente
+                    </a>
+                </div>
+                {% endif %}
 
                 <hr class="my-4">
                 
@@ -117,10 +205,28 @@
                         <textarea name="observacoes" class="form-control" rows="3"></textarea>
                     </div>
 
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <!-- Botão de Conclusão (desabilitado se PENDENTE) -->
+                        {% if pedido.status_fila == 'pendente' %}
+                        <button type="submit" class="btn btn-success" disabled title="Ative o pedido para poder concluir a etapa">
+                            <i class="bi bi-check-circle"></i> Concluir Etapa
+                        </button>
+                        <small class="text-danger align-self-center">⚠️ Ative o pedido para concluir</small>
+                        {% else %}
                         <button type="submit" class="btn btn-success">
                             <i class="bi bi-check-circle"></i> Concluir Etapa
                         </button>
+                        {% endif %}
+                        
+                        <!-- Botão de Toggle Status -->
+                        <a href="{% url 'dashboard:toggle_status_fila' pedido.id %}" class="btn {% if pedido.status_fila == 'ativo' %}btn-warning{% else %}btn-primary{% endif %}">
+                            {% if pedido.status_fila == 'ativo' %}
+                            <i class="bi bi-pause-circle"></i> Mudar para Pendente
+                            {% else %}
+                            <i class="bi bi-play-circle"></i> Ativar Pedido
+                            {% endif %}
+                        </a>
+                        
                         <a href="{% url 'dashboard:meus_pedidos' %}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Voltar
                         </a>

@@ -240,6 +240,7 @@ def pedidos_disponiveis_funcionario(request):
 @login_required
 def assumir_pedido(request, pedido_id):
     from django.contrib import messages
+    from django.urls import reverse
     
     pedido = get_object_or_404(Pedido, id=pedido_id)
     
@@ -251,8 +252,40 @@ def assumir_pedido(request, pedido_id):
         messages.error(request, 'Este pedido não está disponível para ser assumido.')
         return redirect('dashboard:pedidos_disponiveis')
     
+    # Verificar se é etapa de Expedição
+    is_expedicao = pedido.etapa_atual and pedido.etapa_atual.nome.lower() == 'expedição'
+    
+    # Validar LIMITE de 5 pedidos simultâneos (APENAS para etapas diferentes de Expedição)
+    if not is_expedicao:
+        pedidos_count = Pedido.objects.filter(
+            funcionario_na_etapa=request.user,
+            status='em_fluxo'
+        ).count()
+        
+        if pedidos_count >= 5:
+            return redirect(f"{reverse('dashboard:pedidos_disponiveis')}?modal=limite_pedidos")
+    
     # Assumir o pedido
     pedido.funcionario_na_etapa = request.user
+    
+    # Para Expedição: SEMPRE ATIVO, sem pendente
+    if is_expedicao:
+        pedido.status_fila = 'ativo'
+    else:
+        # Para outras etapas: Se já tem 1 ativo, novo vem como PENDENTE
+        ativo_count = Pedido.objects.filter(
+            funcionario_na_etapa=request.user,
+            status='em_fluxo',
+            status_fila='ativo'
+        ).count()
+        
+        if ativo_count >= 1:
+            # Já tem um ativo, novo é PENDENTE
+            pedido.status_fila = 'pendente'
+        else:
+            # Não tem nenhum ativo, novo é ATIVO
+            pedido.status_fila = 'ativo'
+    
     pedido.save()
     
     # Criar histórico de etapa
@@ -265,11 +298,12 @@ def assumir_pedido(request, pedido_id):
     LogAuditoria.objects.create(
         usuario=request.user,
         acao='assumir_etapa',
-        descricao=f'Assumiu pedido #{pedido.id} na etapa {pedido.etapa_atual.nome}',
+        descricao=f'Assumiu pedido #{pedido.id} na etapa {pedido.etapa_atual.nome} (status_fila: {pedido.status_fila})',
         ip_address=request.META.get('REMOTE_ADDR')
     )
     
-    messages.success(request, f'Pedido #{pedido.id} assumido com sucesso!')
+    status_msg = "ATIVO" if pedido.status_fila == 'ativo' else "PENDENTE"
+    messages.success(request, f'Pedido #{pedido.id} assumido com sucesso! Status: {status_msg}')
     return redirect('dashboard:trabalhar_pedido', pedido_id=pedido.id)
 
 @login_required
@@ -279,6 +313,10 @@ def trabalhar_pedido(request, pedido_id):
     from django.contrib import messages
     
     pedido = get_object_or_404(Pedido, id=pedido_id, funcionario_na_etapa=request.user)
+    
+    # Se estiver na etapa de Controle de Qualidade, redirecionar para o formulário
+    if pedido.etapa_atual and pedido.etapa_atual.nome.lower() == 'controle de qualidade':
+        return redirect('dashboard:controle_qualidade', pedido_id=pedido.id)
     
     # Se estiver na etapa de Expedição, mostrar tela de escolha (Motoboy ou Sedex)
     if pedido.etapa_atual.nome == 'Expedição':
@@ -348,18 +386,81 @@ def marcar_checklist(request, execucao_id):
     return redirect('dashboard:trabalhar_pedido', pedido_id=execucao.historico_etapa.pedido.id)
 
 @login_required
+def toggle_status_fila(request, pedido_id):
+    """Alterna entre status ATIVO e PENDENTE de um pedido"""
+    from django.contrib import messages
+    
+    pedido = get_object_or_404(Pedido, id=pedido_id, funcionario_na_etapa=request.user)
+    
+    # Validar que pedido está em fluxo
+    if pedido.status != 'em_fluxo':
+        messages.error(request, 'Você só pode alternar status de pedidos em fluxo.')
+        return redirect('dashboard:trabalhar_pedido', pedido_id=pedido_id)
+    
+    if pedido.status_fila == 'ativo':
+        # Mudar para PENDENTE
+        # Verificar se está em sessão de expedição
+        pedidos_motoboy = request.session.get('pedidos_motoboy', [])
+        pedidos_sedex = request.session.get('pedidos_sedex', [])
+        em_sessao_expedicao = pedido.id in pedidos_motoboy or pedido.id in pedidos_sedex
+        
+        success, msg = pedido.marcar_como_pendente(em_sessao_expedicao=em_sessao_expedicao)
+        if success:
+            messages.success(request, f'Pedido #{pedido.id_api} movido para PENDENTE. Você pode trabalhar em outro pedido.')
+        else:
+            messages.error(request, msg)
+    else:
+        # IMPORTANTE: Antes de ativar, garantir que não há outro ativo
+        # Colocar todos os outros como PENDENTE (EXCETO os de Expedição que sempre permanecem ATIVO)
+        etapa_expedicao = Etapa.objects.filter(nome='Expedição').first()
+        
+        Pedido.objects.filter(
+            funcionario_na_etapa=request.user,
+            status='em_fluxo',
+            status_fila='ativo'
+        ).exclude(
+            id=pedido.id
+        ).exclude(
+            etapa_atual=etapa_expedicao
+        ).update(status_fila='pendente')
+        
+        # Agora marcar este como ATIVO
+        pedido.status_fila = 'ativo'
+        pedido.save()
+        
+        messages.success(request, f'Pedido #{pedido.id_api} ATIVADO. Os outros pedidos foram colocados em PENDENTE.')
+    
+    LogAuditoria.objects.create(
+        usuario=request.user,
+        acao='toggle_status_fila',
+        descricao=f'Alterou status_fila do pedido #{pedido.id} para {pedido.status_fila}',
+        ip_address=request.META.get('REMOTE_ADDR')
+    )
+    
+    return redirect('dashboard:trabalhar_pedido', pedido_id=pedido_id)
+
+@login_required
 def concluir_etapa(request, pedido_id):
     from django.contrib import messages
     from core.models import ConfiguracaoPontuacao, PontuacaoPorAtividade
     
+    # Buscar pedido sem restrição de funcionário primeiro
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    
+    # Se estiver na etapa de Controle de Qualidade, redirecionar para o formulário
+    if pedido.etapa_atual and pedido.etapa_atual.nome.lower() == 'controle de qualidade':
+        return redirect('dashboard:controle_qualidade', pedido_id=pedido.id)
+    
     if request.method == 'POST':
-        # Buscar pedido sem restrição de funcionário primeiro
-        pedido = get_object_or_404(Pedido, id=pedido_id)
-        
         # Verificar se o usuário é o funcionário na etapa
         if pedido.funcionario_na_etapa != request.user:
             messages.error(request, 'Você não é o responsável por este pedido.')
             return redirect('dashboard:meus_pedidos')
+        
+        # Validar: pedido PENDENTE não pode ser concluído
+        if pedido.status_fila == 'pendente':
+            messages.error(request, 'Você não pode concluir esta etapa enquanto o pedido está em status PENDENTE. Clique em "Ativar Pedido" primeiro.')
+            return redirect('dashboard:trabalhar_pedido', pedido_id=pedido_id)
         
         # Buscar histórico atual
         historico = HistoricoEtapa.objects.filter(
@@ -402,6 +503,9 @@ def concluir_etapa(request, pedido_id):
                 config = ConfiguracaoPontuacao.get_versao_ativa(etapa)
                 if config:
                     pontos_totais = config.pontos_fixos
+            
+            # Adicionar pontos fixos da etapa (sempre, além de outros pontos)
+            pontos_totais += Decimal(str(etapa.pontos_fixos_etapa))
         
         # Finalizar histórico
         historico.timestamp_fim = timezone.now()
@@ -416,7 +520,7 @@ def concluir_etapa(request, pedido_id):
                 pedido=pedido,
                 etapa=etapa,
                 pontos=pontos_totais,
-                origem='producao' if etapa and etapa.grupo == 'producao' else 'etapa',
+                origem='producao' if etapa and etapa.nome.lower() == 'produção' else 'etapa',
                 mes_referencia=timezone.now().date()
             )
         
@@ -436,6 +540,42 @@ def concluir_etapa(request, pedido_id):
     return redirect('dashboard:meus_pedidos')
 
 @login_required
+def selecionar_rota_expedicao(request, pedido_id, tipo_rota):
+    """Registra qual rota de expedição foi selecionada (motoboy ou sedex)"""
+    from django.contrib import messages
+    
+    if tipo_rota not in ['motoboy', 'sedex']:
+        messages.error(request, 'Tipo de rota inválido.')
+        return redirect('dashboard:trabalhar_pedido', pedido_id=pedido_id)
+    
+    pedido = get_object_or_404(Pedido, id=pedido_id, funcionario_na_etapa=request.user)
+    
+    # Se o pedido já estava vinculado a outra rota, remove da sessão anterior
+    rota_anterior = pedido.tipo_expedicao
+    if rota_anterior and rota_anterior != tipo_rota:
+        # Remove da sessão da rota anterior
+        if rota_anterior == 'motoboy':
+            pedidos_motoboy = request.session.get('pedidos_motoboy', [])
+            if pedido_id in pedidos_motoboy:
+                pedidos_motoboy.remove(pedido_id)
+                request.session['pedidos_motoboy'] = pedidos_motoboy
+        elif rota_anterior == 'sedex':
+            pedidos_sedex = request.session.get('pedidos_sedex', [])
+            if pedido_id in pedidos_sedex:
+                pedidos_sedex.remove(pedido_id)
+                request.session['pedidos_sedex'] = pedidos_sedex
+    
+    # Registra qual rota foi selecionada
+    pedido.tipo_expedicao = tipo_rota
+    pedido.save()
+    
+    # Redireciona para a página de expedição correta
+    if tipo_rota == 'motoboy':
+        return redirect('dashboard:expedicao_motoboy')
+    else:
+        return redirect('dashboard:expedicao_sedex')
+
+@login_required
 def expedicao_motoboy(request):
     """Tela para criar rotas de motoboy selecionando pedidos"""
     # Verificar se é funcionário
@@ -453,21 +593,26 @@ def expedicao_motoboy(request):
     
     # Buscar APENAS os pedidos que o funcionário assumiu na etapa de Expedição
     etapa_expedicao = Etapa.objects.get(nome='Expedição')
-    pedidos_disponiveis = Pedido.objects.filter(
-        etapa_atual=etapa_expedicao,
-        funcionario_na_etapa=request.user,
-        status='em_fluxo'
-    ).select_related('tipo').order_by('-criado_em')
     
     # Pedidos já selecionados nesta sessão
     pedidos_selecionados_ids = request.session.get('pedidos_motoboy', [])
+    
+    # Pedidos disponíveis: apenas os com tipo_expedicao='motoboy' (ou sem tipo_expedicao se nunca foram selecionados)
+    # Excluindo os já selecionados nesta sessão
+    pedidos_disponiveis = Pedido.objects.filter(
+        etapa_atual=etapa_expedicao,
+        funcionario_na_etapa=request.user,
+        status='em_fluxo',
+        tipo_expedicao__in=['motoboy', None]  # Apenas motoboy ou sem seleção
+    ).exclude(id__in=pedidos_selecionados_ids).select_related('tipo').order_by('-criado_em')
+    
     pedidos_selecionados = Pedido.objects.filter(id__in=pedidos_selecionados_ids)
     
     if request.method == 'POST':
         acao = request.POST.get('acao')
         
-        if acao == 'adicionar':
-            # Adicionar pedido à rota
+        if acao == 'adicionar' or acao == 'adicionar_individual':
+            # Adicionar pedido à rota (individual ou via checkbox)
             pedido_id = int(request.POST.get('pedido_id'))
             pedido = get_object_or_404(Pedido, id=pedido_id, etapa_atual=etapa_expedicao)
             
@@ -478,14 +623,107 @@ def expedicao_motoboy(request):
             
             return redirect('dashboard:expedicao_motoboy')
         
-        elif acao == 'remover':
-            # Remover pedido da rota
-            pedido_id = int(request.POST.get('pedido_id'))
-            if pedido_id in pedidos_selecionados_ids:
-                pedidos_selecionados_ids.remove(pedido_id)
+        elif acao == 'adicionar_selecionados':
+            # Adicionar múltiplos pedidos em lote
+            pedidos_ids = request.POST.getlist('pedidos_selecionados')
+            if pedidos_ids:
+                for pedido_id in pedidos_ids:
+                    pedido_id = int(pedido_id)
+                    if pedido_id not in pedidos_selecionados_ids:
+                        pedido = get_object_or_404(Pedido, id=pedido_id, etapa_atual=etapa_expedicao)
+                        pedidos_selecionados_ids.append(pedido_id)
                 request.session['pedidos_motoboy'] = pedidos_selecionados_ids
-                messages.warning(request, f'Pedido removido da rota')
+                messages.success(request, f'{len(pedidos_ids)} pedido(s) adicionado(s) à rota')
+            else:
+                messages.warning(request, 'Nenhum pedido foi selecionado')
             
+            return redirect('dashboard:expedicao_motoboy')
+        
+        elif acao == 'remover':
+            # Remover pedido da rota - apenas da sessão, volta para pedidos disponíveis
+            pedido_id = int(request.POST.get('pedido_id'))
+            try:
+                pedido = Pedido.objects.get(id=pedido_id)
+                pedido_nome = f"#{pedido.id_api}"
+                
+                # Remover APENAS da sessão (não limpa tipo_expedicao do banco)
+                if pedido_id in pedidos_selecionados_ids:
+                    pedidos_selecionados_ids.remove(pedido_id)
+                    request.session['pedidos_motoboy'] = pedidos_selecionados_ids
+                    request.session.modified = True
+                
+                messages.success(request, f'Pedido {pedido_nome} devolvido aos pedidos disponíveis!')
+            except Pedido.DoesNotExist:
+                messages.error(request, 'Pedido não encontrado.')
+            
+            # Manter na tela
+            return redirect('dashboard:expedicao_motoboy')
+        
+        elif acao == 'remover_expedicao':
+            # Remover expedição - manter na tela
+            pedido_id = int(request.POST.get('pedido_id'))
+            try:
+                pedido = Pedido.objects.get(id=pedido_id)
+                pedido_nome = f"#{pedido.id_api}"
+                
+                # Limpar tipo_expedicao do banco
+                if pedido.tipo_expedicao:
+                    pedido.tipo_expedicao = None
+                    pedido.save()
+                
+                # Remover da sessão
+                if pedido_id in pedidos_selecionados_ids:
+                    pedidos_selecionados_ids.remove(pedido_id)
+                    request.session['pedidos_motoboy'] = pedidos_selecionados_ids
+                    request.session.modified = True
+                
+                messages.success(request, f'Pedido {pedido_nome} removido! Agora você pode selecionar outra rota.')
+            except Pedido.DoesNotExist:
+                messages.error(request, 'Pedido não encontrado.')
+            
+            # Manter na tela
+            return redirect('dashboard:expedicao_motoboy')
+        
+        elif acao == 'remover_expedicao_lote':
+            # Remover expedição para múltiplos pedidos selecionados - manter na tela
+            pedidos_ids = request.POST.getlist('pedidos_selecionados')
+            if pedidos_ids:
+                try:
+                    for pedido_id in pedidos_ids:
+                        pedido_id = int(pedido_id)
+                        pedido = Pedido.objects.get(id=pedido_id)
+                        
+                        # Limpar tipo_expedicao do banco
+                        if pedido.tipo_expedicao:
+                            pedido.tipo_expedicao = None
+                            pedido.save()
+                        
+                        # Remover da sessão
+                        if pedido_id in pedidos_selecionados_ids:
+                            pedidos_selecionados_ids.remove(pedido_id)
+                    
+                    request.session['pedidos_motoboy'] = pedidos_selecionados_ids
+                    request.session.modified = True
+                    messages.success(request, f'{len(pedidos_ids)} pedido(s) removido(s) da expedição!')
+                except Exception as e:
+                    messages.error(request, f'Erro ao remover expedição: {str(e)}')
+            else:
+                messages.warning(request, 'Nenhum pedido foi selecionado')
+            
+            # Manter na tela
+            return redirect('dashboard:expedicao_motoboy')
+        
+        elif acao == 'cancelar':
+            # Cancelar rota - limpar sessão e permanecer na mesma página
+            if pedidos_selecionados_ids:
+                try:
+                    # Limpar o tipo_expedicao do banco de dados para todos os pedidos selecionados
+                    Pedido.objects.filter(id__in=pedidos_selecionados_ids).update(tipo_expedicao=None)
+                    request.session['pedidos_motoboy'] = []
+                    request.session.modified = True
+                    messages.success(request, 'Expedição removida. Os pedidos retornaram aos disponíveis.')
+                except Exception as e:
+                    messages.error(request, f'Erro ao cancelar: {str(e)}')
             return redirect('dashboard:expedicao_motoboy')
         
         elif acao == 'finalizar':
@@ -536,15 +774,16 @@ def expedicao_motoboy(request):
                     # Finalizar histórico com pontos conforme configuração
                     pontos_rota = config_motoboy.pontos_por_rota_motoboy
                     historico.timestamp_fim = timezone.now()
-                    historico.pontos_gerados = pontos_rota
+                    historico.pontos_gerados = pontos_rota + Decimal(str(etapa_expedicao.pontos_fixos_etapa))
                     historico.save()
                     
                     # Registrar pontuação
+                    pontos_total_com_etapa = pontos_rota + Decimal(str(etapa_expedicao.pontos_fixos_etapa))
                     PontuacaoFuncionario.objects.create(
                         funcionario=request.user,
                         pedido=pedido,
                         etapa=etapa_expedicao,
-                        pontos=pontos_rota,
+                        pontos=pontos_total_com_etapa,
                         origem='expedicao',
                         mes_referencia=timezone.now().date()
                     )
@@ -589,14 +828,19 @@ def expedicao_sedex(request):
     
     # Buscar APENAS os pedidos que o funcionário assumiu na etapa de Expedição
     etapa_expedicao = Etapa.objects.get(nome='Expedição')
-    pedidos_disponiveis = Pedido.objects.filter(
-        etapa_atual=etapa_expedicao,
-        funcionario_na_etapa=request.user,
-        status='em_fluxo'
-    ).select_related('tipo').order_by('-criado_em')
     
     # Pedidos já selecionados para sedex nesta sessão
     pedidos_selecionados_ids = request.session.get('pedidos_sedex', [])
+    
+    # Pedidos disponíveis: apenas os com tipo_expedicao='sedex' (ou sem tipo_expedicao se nunca foram selecionados)
+    # Excluindo os já selecionados nesta sessão
+    pedidos_disponiveis = Pedido.objects.filter(
+        etapa_atual=etapa_expedicao,
+        funcionario_na_etapa=request.user,
+        status='em_fluxo',
+        tipo_expedicao__in=['sedex', None]  # Apenas sedex ou sem seleção
+    ).exclude(id__in=pedidos_selecionados_ids).select_related('tipo').order_by('-criado_em')
+    
     pedidos_selecionados = Pedido.objects.filter(id__in=pedidos_selecionados_ids)
     
     # Verificar se já processou sedex hoje (para contagem por dia)
@@ -613,8 +857,8 @@ def expedicao_sedex(request):
     if request.method == 'POST':
         acao = request.POST.get('acao')
         
-        if acao == 'adicionar':
-            # Adicionar pedido ao sedex
+        if acao == 'adicionar' or acao == 'adicionar_individual':
+            # Adicionar pedido ao sedex (individual ou via checkbox)
             pedido_id = int(request.POST.get('pedido_id'))
             pedido = get_object_or_404(Pedido, id=pedido_id, etapa_atual=etapa_expedicao, funcionario_na_etapa=request.user)
             
@@ -625,14 +869,107 @@ def expedicao_sedex(request):
             
             return redirect('dashboard:expedicao_sedex')
         
-        elif acao == 'remover':
-            # Remover pedido do sedex
-            pedido_id = int(request.POST.get('pedido_id'))
-            if pedido_id in pedidos_selecionados_ids:
-                pedidos_selecionados_ids.remove(pedido_id)
+        elif acao == 'adicionar_selecionados':
+            # Adicionar múltiplos pedidos em lote
+            pedidos_ids = request.POST.getlist('pedidos_selecionados')
+            if pedidos_ids:
+                for pedido_id in pedidos_ids:
+                    pedido_id = int(pedido_id)
+                    if pedido_id not in pedidos_selecionados_ids:
+                        pedido = get_object_or_404(Pedido, id=pedido_id, etapa_atual=etapa_expedicao, funcionario_na_etapa=request.user)
+                        pedidos_selecionados_ids.append(pedido_id)
                 request.session['pedidos_sedex'] = pedidos_selecionados_ids
-                messages.warning(request, f'Pedido removido do sedex')
+                messages.success(request, f'{len(pedidos_ids)} pedido(s) adicionado(s) ao sedex')
+            else:
+                messages.warning(request, 'Nenhum pedido foi selecionado')
             
+            return redirect('dashboard:expedicao_sedex')
+        
+        elif acao == 'remover':
+            # Remover pedido da rota - apenas da sessão, volta para pedidos disponíveis
+            pedido_id = int(request.POST.get('pedido_id'))
+            try:
+                pedido = Pedido.objects.get(id=pedido_id)
+                pedido_nome = f"#{pedido.id_api}"
+                
+                # Remover APENAS da sessão (não limpa tipo_expedicao do banco)
+                if pedido_id in pedidos_selecionados_ids:
+                    pedidos_selecionados_ids.remove(pedido_id)
+                    request.session['pedidos_sedex'] = pedidos_selecionados_ids
+                    request.session.modified = True
+                
+                messages.success(request, f'Pedido {pedido_nome} devolvido aos pedidos disponíveis!')
+            except Pedido.DoesNotExist:
+                messages.error(request, 'Pedido não encontrado.')
+            
+            # Manter na tela
+            return redirect('dashboard:expedicao_sedex')
+        
+        elif acao == 'remover_expedicao':
+            # Remover expedição - manter na tela
+            pedido_id = int(request.POST.get('pedido_id'))
+            try:
+                pedido = Pedido.objects.get(id=pedido_id)
+                pedido_nome = f"#{pedido.id_api}"
+                
+                # Limpar tipo_expedicao do banco
+                if pedido.tipo_expedicao:
+                    pedido.tipo_expedicao = None
+                    pedido.save()
+                
+                # Remover da sessão
+                if pedido_id in pedidos_selecionados_ids:
+                    pedidos_selecionados_ids.remove(pedido_id)
+                    request.session['pedidos_sedex'] = pedidos_selecionados_ids
+                    request.session.modified = True
+                
+                messages.success(request, f'Pedido {pedido_nome} removido! Agora você pode selecionar outra rota.')
+            except Pedido.DoesNotExist:
+                messages.error(request, 'Pedido não encontrado.')
+            
+            # Manter na tela
+            return redirect('dashboard:expedicao_sedex')
+        
+        elif acao == 'remover_expedicao_lote':
+            # Remover expedição para múltiplos pedidos selecionados - manter na tela
+            pedidos_ids = request.POST.getlist('pedidos_selecionados')
+            if pedidos_ids:
+                try:
+                    for pedido_id in pedidos_ids:
+                        pedido_id = int(pedido_id)
+                        pedido = Pedido.objects.get(id=pedido_id)
+                        
+                        # Limpar tipo_expedicao do banco
+                        if pedido.tipo_expedicao:
+                            pedido.tipo_expedicao = None
+                            pedido.save()
+                        
+                        # Remover da sessão
+                        if pedido_id in pedidos_selecionados_ids:
+                            pedidos_selecionados_ids.remove(pedido_id)
+                    
+                    request.session['pedidos_sedex'] = pedidos_selecionados_ids
+                    request.session.modified = True
+                    messages.success(request, f'{len(pedidos_ids)} pedido(s) removido(s) da expedição!')
+                except Exception as e:
+                    messages.error(request, f'Erro ao remover expedição: {str(e)}')
+            else:
+                messages.warning(request, 'Nenhum pedido foi selecionado')
+            
+            # Manter na tela
+            return redirect('dashboard:expedicao_sedex')
+        
+        elif acao == 'cancelar':
+            # Cancelar sedex - limpar sessão e permanecer na mesma página
+            if pedidos_selecionados_ids:
+                try:
+                    # Limpar o tipo_expedicao do banco de dados para todos os pedidos selecionados
+                    Pedido.objects.filter(id__in=pedidos_selecionados_ids).update(tipo_expedicao=None)
+                    request.session['pedidos_sedex'] = []
+                    request.session.modified = True
+                    messages.success(request, 'Expedição removida. Os pedidos retornaram aos disponíveis.')
+                except Exception as e:
+                    messages.error(request, f'Erro ao cancelar: {str(e)}')
             return redirect('dashboard:expedicao_sedex')
         
         elif acao == 'finalizar':
@@ -699,20 +1036,21 @@ def expedicao_sedex(request):
                     
                     # Finalizar histórico com pontos
                     historico.timestamp_fim = timezone.now()
-                    historico.pontos_gerados = pontos_rota
+                    historico.pontos_gerados = pontos_rota + Decimal(str(etapa_expedicao.pontos_fixos_etapa))
                     historico.save()
                     
                     # Registrar pontuação
-                    if pontos_rota > 0:
+                    pontos_total_com_etapa = pontos_rota + Decimal(str(etapa_expedicao.pontos_fixos_etapa))
+                    if pontos_total_com_etapa > 0:
                         PontuacaoFuncionario.objects.create(
                             funcionario=request.user,
                             pedido=pedido,
                             etapa=etapa_expedicao,
-                            pontos=pontos_rota,
+                            pontos=pontos_total_com_etapa,
                             origem='expedicao',
                             mes_referencia=timezone.now().date()
                         )
-                        pontos_totais += pontos_rota
+                        pontos_totais += pontos_total_com_etapa
                     
                     # Avançar pedido para próxima etapa
                     pedido.avancar_etapa()
@@ -801,8 +1139,11 @@ def rotas_finalizadas_gerente(request):
     return render(request, 'dashboard/rotas_finalizadas.html', context)
 
 @login_required
+@login_required
 def historico_etapas_funcionario(request):
     """Histórico de pedidos agrupado com última etapa completada"""
+    from django.core.paginator import Paginator
+    
     usuario = request.user
     
     # Buscar todos os históricos de etapas do funcionário
@@ -838,9 +1179,15 @@ def historico_etapas_funcionario(request):
     resumo_etapas = list(resumo_pedidos.values())
     resumo_etapas.sort(key=lambda x: x['pontos_total'], reverse=True)
     
+    # Paginar o resumo
+    paginator = Paginator(resumo_etapas, 10)  # 10 itens por página
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
     context = {
         'historicos': historicos_por_pedido,
-        'resumo_etapas': resumo_etapas,
+        'resumo_etapas': page_obj.object_list,
+        'page_obj': page_obj,
     }
     
     return render(request, 'dashboard/historico_etapas_funcionario.html', context)
@@ -1558,3 +1905,202 @@ def auditoria(request):
     )
     
     return render(request, 'dashboard/auditoria.html', context)
+
+# Controle de Qualidade Views
+from core.models import ControlePergunta, HistoricoControleQualidade, RespostaControleQualidade
+
+@login_required
+def controle_qualidade(request, pedido_id):
+    """
+    Tela para funcionário preencher o Controle de Qualidade
+    """
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    
+    # Verificar se o funcionário é responsável pelo pedido
+    if pedido.funcionario_na_etapa != request.user:
+        messages.error(request, 'Você não está responsável por este pedido')
+        return redirect('dashboard:funcionario')
+    
+    # Verificar se a etapa atual é Controle de Qualidade
+    if not pedido.etapa_atual or pedido.etapa_atual.nome.lower() != 'controle de qualidade':
+        messages.error(request, 'Este pedido não está na etapa de Controle de Qualidade')
+        return redirect('dashboard:funcionario')
+    
+    # Obter o histórico de etapa (se existir) para relacionar as respostas
+    historico_etapa = HistoricoEtapa.objects.filter(
+        pedido=pedido,
+        etapa=pedido.etapa_atual,
+        timestamp_fim__isnull=True
+    ).first()
+    
+    # Obter todas as perguntas da etapa ordenadas
+    perguntas = ControlePergunta.objects.filter(
+        etapa=pedido.etapa_atual,
+        ativo=True
+    ).prefetch_related('opcoes').order_by('ordem', 'id')
+    
+    if request.method == 'POST':
+        # Criar ou atualizar HistoricoControleQualidade
+        historico_controle, created = HistoricoControleQualidade.objects.get_or_create(
+            pedido=pedido,
+            funcionario=request.user,
+            historico_etapa=historico_etapa
+        )
+        
+        # Processar cada pergunta
+        for pergunta in perguntas:
+            resposta_texto = request.POST.get(f'resposta_{pergunta.id}', '').strip()
+            resposta_opcao_id = request.POST.get(f'opcao_{pergunta.id}')
+            
+            # Validar perguntas obrigatórias
+            if pergunta.obrigatorio and not resposta_texto and not resposta_opcao_id:
+                messages.error(request, f'A pergunta "{pergunta.pergunta}" é obrigatória')
+                # Redirecionar de volta ao formulário
+                context = {
+                    'pedido': pedido,
+                    'perguntas': perguntas,
+                    'historico_etapa': historico_etapa,
+                }
+                return render(request, 'dashboard/controle_qualidade.html', context)
+            
+            # Salvar resposta
+            resposta, _ = RespostaControleQualidade.objects.update_or_create(
+                historico_controle=historico_controle,
+                pergunta=pergunta,
+                defaults={
+                    'resposta_texto': resposta_texto,
+                    'resposta_opcao_id': resposta_opcao_id if resposta_opcao_id else None,
+                }
+            )
+        
+        messages.success(request, 'Controle de Qualidade concluído com sucesso!')
+        
+        # Avançar para a próxima etapa
+        pedido.avancar_etapa()
+        
+        LogAuditoria.objects.create(
+            usuario=request.user,
+            acao='concluir_etapa',
+            descricao=f'Preencheu Controle de Qualidade para pedido {pedido.codigo_pedido}',
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return redirect('dashboard:funcionario')
+    
+    # Pré-carregar respostas já salvas (se existirem)
+    respostas_salvas = []
+    if historico_etapa:
+        historico_controle = HistoricoControleQualidade.objects.filter(
+            pedido=pedido,
+            funcionario=request.user,
+            historico_etapa=historico_etapa
+        ).first()
+        
+        if historico_controle:
+            respostas_salvas = RespostaControleQualidade.objects.filter(
+                historico_controle=historico_controle
+            ).select_related('resposta_opcao')
+    
+    context = {
+        'pedido': pedido,
+        'perguntas': perguntas,
+        'respostas_salvas': respostas_salvas,
+        'historico_etapa': historico_etapa,
+    }
+    
+    return render(request, 'dashboard/controle_qualidade.html', context)
+
+
+@login_required
+def historico_controle_qualidade(request, pedido_id):
+    """
+    Tela para gerente visualizar as respostas do Controle de Qualidade
+    """
+    # Verificar se é gerente
+    if not (request.user.groups.filter(name__in=['Gerente', 'Superadmin']).exists() or request.user.is_superuser):
+        messages.error(request, 'Acesso restrito a gerentes')
+        return redirect('dashboard:home')
+    
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    
+    # Obter todos os registros de Controle de Qualidade para este pedido
+    historicos = HistoricoControleQualidade.objects.filter(
+        pedido=pedido
+    ).select_related('funcionario', 'historico_etapa').prefetch_related(
+        'respostas',
+        'respostas__pergunta',
+        'respostas__resposta_opcao'
+    ).order_by('-preenchido_em')
+    
+    # Organizar respostas por histórico
+    historicos_com_respostas = []
+    for historico in historicos:
+        respostas = historico.respostas.all().order_by('pergunta__ordem', 'pergunta__id')
+        historicos_com_respostas.append({
+            'historico': historico,
+            'respostas': respostas,
+        })
+    
+    context = {
+        'pedido': pedido,
+        'historicos_com_respostas': historicos_com_respostas,
+    }
+    
+    LogAuditoria.objects.create(
+        usuario=request.user,
+        acao='outros',
+        descricao=f'Visualizou Controle de Qualidade do pedido {pedido.codigo_pedido}',
+        ip_address=request.META.get('REMOTE_ADDR')
+    )
+    
+    return render(request, 'dashboard/historico_controle_qualidade.html', context)
+
+
+@login_required
+def controle_qualidade_lista(request):
+    """
+    Lista todos os pedidos com histórico de Controle de Qualidade para o gerente
+    """
+    # Verificar se é gerente
+    if not (request.user.groups.filter(name__in=['Gerente', 'Superadmin']).exists() or request.user.is_superuser):
+        messages.error(request, 'Acesso restrito a gerentes')
+        return redirect('dashboard:home')
+    
+    # Obter todos os pedidos que têm histórico de Controle de Qualidade
+    # Ordenar por pedido_id DESC para pegar o mais recente, depois filtrar duplicatas em Python
+    historicos_raw = HistoricoControleQualidade.objects.select_related(
+        'pedido',
+        'funcionario'
+    ).prefetch_related(
+        'pedido__etapa_atual',
+        'respostas',
+        'respostas__pergunta'
+    ).order_by('-preenchido_em')
+    
+    # Filtrar para pegar apenas o registro mais recente de cada pedido
+    seen_pedidos = set()
+    historicos_list = []
+    for historico in historicos_raw:
+        if historico.pedido_id not in seen_pedidos:
+            historicos_list.append(historico)
+            seen_pedidos.add(historico.pedido_id)
+    
+    # Paginação
+    from django.core.paginator import Paginator
+    paginator = Paginator(historicos_list, 20)
+    page_number = request.GET.get('page', 1)
+    historicos_page = paginator.get_page(page_number)
+    
+    context = {
+        'historicos': historicos_page,
+        'total_pedidos': len(historicos_list),
+    }
+    
+    LogAuditoria.objects.create(
+        usuario=request.user,
+        acao='outros',
+        descricao='Acessou lista de Controle de Qualidade',
+        ip_address=request.META.get('REMOTE_ADDR')
+    )
+    
+    return render(request, 'dashboard/controle_qualidade_lista.html', context)

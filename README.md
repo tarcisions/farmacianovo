@@ -1,19 +1,18 @@
 # Sistema de Produção Gamificada
 
-Sistema web completo de gestão de produção com gamificação para funcionários.
+Sistema web completo de gestão de produção com gamificação para funcionários, desenvolvido com Django, WebSockets (Channels) e gamificação.
 
 ## 📋 Requisitos
 
-- Python 3.11 ou superior
-- Redis (para Celery e Channels)
-- pip (gerenciador de pacotes Python)
+- **Local**: Python 3.11+, Redis, pip
+- **Render**: PostgreSQL, Redis (Render for Redis)
 
 ## 🚀 Instalação Local
 
 ### 1. Clone ou extraia o projeto
 
 ```bash
-cd projeto_export
+cd farmacianovo
 ```
 
 ### 2. Crie um ambiente virtual (recomendado)
@@ -36,7 +35,7 @@ pip install -r requirements.txt
 
 ### 4. Configure as variáveis de ambiente
 
-Copie o arquivo `.env.example` para `.env` e configure:
+Copie o arquivo `.env.example` para `.env`:
 
 ```bash
 # Windows
@@ -46,13 +45,17 @@ copy .env.example .env
 cp .env.example .env
 ```
 
-Edite o arquivo `.env` e altere a `SECRET_KEY`:
+Edite o arquivo `.env` e configure:
 
-```
+```env
 SECRET_KEY=gere-uma-chave-secreta-aqui
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+DATABASE_URL=sqlite:///db.sqlite3
+REDIS_URL=redis://127.0.0.1:6379/0
 ```
 
-Para gerar uma SECRET_KEY segura, execute:
+Para gerar uma SECRET_KEY segura:
 
 ```python
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
@@ -66,13 +69,11 @@ python manage.py migrate
 
 ### 6. Configure o sistema inicial
 
-Execute o comando para criar etapas, grupos e configurações:
-
 ```bash
 python manage.py setup_inicial
 ```
 
-Este comando criará:
+Cria:
 - Grupos de usuários (Superadmin, Gerente, Funcionário)
 - Etapas do workflow
 - Configurações de pontuação
@@ -84,8 +85,6 @@ Este comando criará:
 python manage.py createsuperuser
 ```
 
-Siga as instruções para criar seu usuário administrador.
-
 ### 8. (Opcional) Crie pedidos de teste
 
 ```bash
@@ -95,7 +94,203 @@ python manage.py criar_pedidos_teste
 ### 9. Inicie o servidor
 
 ```bash
+# Servidor Django padrão
 python manage.py runserver
+
+# Ou com Daphne (para WebSockets)
+daphne -b 0.0.0.0 -p 8000 producao_gamificada.asgi:application
+```
+
+---
+
+## 🌐 Deploy no Render (com SQLite)
+
+### Pré-requisitos
+
+1. Conta no [Render.com](https://render.com)
+2. Projeto no GitHub
+3. Arquivo `db.sqlite3` localmente com os dados
+
+### Passo 1: Prepare o Repositório
+
+1. Certifique-se que o `db.sqlite3` está no repositório:
+
+```bash
+# Verifique se está no .gitignore
+cat .gitignore | grep sqlite3
+
+# Se estiver, remova a linha
+# Edite .gitignore e remova: *.sqlite3 ou db.sqlite3
+```
+
+2. Adicione o banco de dados ao Git:
+
+```bash
+git add db.sqlite3
+git commit -m "Add database with initial data"
+git push origin main
+```
+
+### Passo 2: Crie um arquivo `render.yaml`
+
+Na raiz do projeto:
+
+```yaml
+services:
+  - type: web
+    name: farmacianovo
+    env: python
+    plan: free
+    buildCommand: >
+      pip install -r requirements.txt &&
+      python manage.py collectstatic --noinput
+    startCommand: >
+      daphne -b 0.0.0.0 -p $PORT producao_gamificada.asgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: false
+      - key: ALLOWED_HOSTS
+        value: "*.render.com"
+      - key: REDIS_URL
+        fromService:
+          name: farmacianovo-redis
+          property: connectionString
+
+  - type: redis
+    name: farmacianovo-redis
+    plan: free
+    ipAllowList: []
+```
+
+### Passo 3: Push para GitHub
+
+```bash
+git add .
+git commit -m "Deploy preparation for Render"
+git push origin main
+```
+
+### Passo 4: Deploy no Render
+
+1. Acesse [Render Dashboard](https://dashboard.render.com)
+2. Clique em **"New +"** → **"Blueprint"**
+3. Conecte seu repositório GitHub (`tarcisions/farmacianovo`)
+4. Selecione a branch `main`
+5. Clique em **"Deploy"**
+
+Render vai criar automaticamente:
+- Serviço Web (Daphne)
+- Redis
+- Usar o `db.sqlite3` do repositório
+
+### Passo 5: Configure Variáveis de Ambiente
+
+No dashboard do Render:
+1. Vá para seu serviço web
+2. Em **"Environment"**, verifique:
+
+```
+SECRET_KEY=<gerado automaticamente>
+DEBUG=false
+ALLOWED_HOSTS=seu-app.render.com
+REDIS_URL=<configurado automaticamente>
+```
+
+### 🚀 Seu App Estará Online!
+
+Acesse: `https://seu-app.render.com`
+
+---
+
+## ⚠️ Importante: Persistência de Dados
+
+### SQLite no Render
+
+SQLite funciona, mas **os dados serão perdidos** quando o app reiniciar (plano free do Render reinicia regularmente).
+
+**Opções:**
+
+1. **Aceitar a perda de dados** (ok para testes)
+2. **Fazer backup do DB localmente:**
+   ```bash
+   # Faça isso regularmente
+   git pull
+   # db.sqlite3 será atualizado se alguém fez mudanças
+   ```
+
+3. **Usar PostgreSQL grátis** (melhor para produção - dados persistem)
+
+---
+
+## 📝 Configuração do `.env`
+
+```env
+# Django
+SECRET_KEY=sua-chave-secreta-segura
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1,seu-app.render.com
+
+# Banco de Dados
+DATABASE_URL=sqlite:///db.sqlite3  # Local
+# DATABASE_URL=postgresql://user:pass@host/dbname  # Render
+
+# Redis
+REDIS_URL=redis://127.0.0.1:6379/0  # Local
+# REDIS_URL=redis://:password@host:port  # Render
+
+# Email (opcional)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=seu-email@gmail.com
+EMAIL_HOST_PASSWORD=sua-senha-app
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+### "ModuleNotFoundError: No module named 'django'"
+```bash
+pip install -r requirements.txt
+```
+
+### Redis não conecta no Render
+- Verifique a URL do Redis no dashboard
+- Certifique-se que `REDIS_URL` está configurada corretamente
+
+### Banco de dados vazio após deploy
+Execute no shell do Render:
+```bash
+python manage.py migrate
+python manage.py setup_inicial
+```
+
+### Static files não aparecem
+No shell do Render:
+```bash
+python manage.py collectstatic --noinput
+```
+
+---
+
+## 📚 Estrutura do Projeto
+
+```
+farmacianovo/
+├── core/                    # App principal
+├── dashboard/               # Dashboard
+├── workflow/                # Gerenciamento de etapas
+├── gamification/            # Sistema de pontuação
+├── producao_gamificada/     # Settings e config
+├── templates/               # Templates HTML
+├── static/                  # Arquivos estáticos
+├── db.sqlite3               # Banco local
+├── manage.py
+└── requirements.txt
 ```
 
 Acesse: http://127.0.0.1:8000

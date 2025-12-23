@@ -21,6 +21,12 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'controle_qualidade_lista' %}active{% endif %}" href="{% url 'dashboard:controle_qualidade_lista' %}">
+            <i class="bi bi-clipboard-check"></i> Controle de Qualidade
+        </a>
+    </li>
+
+    <li class="nav-item">
         {% if user.is_superuser or user.groups.all.0.name == 'Superadmin' or user.groups.all.0.name == 'Gerente' %}
             <a class="nav-link {% if request.resolver_match.url_name == 'rotas_finalizadas_gerente' %}active{% endif %}" href="{% url 'dashboard:rotas_finalizadas_gerente' %}">
                 <i class="bi bi-check-circle"></i> Rotas Finalizadas
@@ -47,7 +53,7 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {% if request.resolver_match.url_name == 'etapas' %}active{% endif %}" href="{% url 'workflow:etapas' %}">
+        <a class="nav-link {% if request.resolver_match.url_name == 'lista_etapas' %}active{% endif %}" href="{% url 'workflow:lista_etapas' %}">
             <i class="bi bi-diagram-3"></i> Etapas
         </a>
     </li>

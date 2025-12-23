@@ -1,23 +1,22 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 
 class Etapa(models.Model):
-    GRUPOS = [
-        ('triagem', 'Triagem'),
-        ('producao', 'Produção'),
-        ('conf_rotulagem', 'Conf/Rotulagem'),
-        ('expedicao', 'Expedição'),
-    ]
-    
     nome = models.CharField(max_length=200)
     sequencia = models.IntegerField()
     ativa = models.BooleanField(default=True)
     se_gera_pontos = models.BooleanField(default=True)
     se_possui_checklists = models.BooleanField(default=False)
     se_possui_calculo_por_quantidade = models.BooleanField(default=False)
-    grupo = models.CharField(max_length=50, choices=GRUPOS)
+    pontos_fixos_etapa = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0,
+        help_text='Pontos adicionados ao concluir a etapa (além dos checklists, se houver)'
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
     
@@ -28,6 +27,10 @@ class Etapa(models.Model):
     
     def __str__(self):
         return f"{self.sequencia}. {self.nome}"
+    
+    def clean(self):
+        if self.sequencia < 0:
+            raise ValidationError('A sequência não pode ser negativa.')
     
     def proxima_etapa(self):
         return Etapa.objects.filter(sequencia__gt=self.sequencia, ativa=True).first()
@@ -210,14 +213,6 @@ class Checklist(models.Model):
     obrigatorio = models.BooleanField(default=True)
     ativo = models.BooleanField(default=True)
     ordem = models.IntegerField(default=0)
-    # Para expedição sedex: permite alternar contagem por dia ou por rota
-    tipo_contagem_sedex = models.CharField(
-        max_length=20, 
-        choices=[('por_dia', 'Por Dia'), ('por_rota', 'Por Rota')],
-        null=True, 
-        blank=True,
-        default='por_dia'
-    )
     criado_em = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -234,6 +229,11 @@ class Pedido(models.Model):
         ('em_fluxo', 'Em Fluxo'),
         ('concluido', 'Concluído'),
         ('cancelado', 'Cancelado'),
+    ]
+    
+    STATUS_FILA = [
+        ('ativo', 'Ativo'),
+        ('pendente', 'Pendente'),
     ]
     
     # Campos da API
@@ -261,6 +261,14 @@ class Pedido(models.Model):
     etapa_atual = models.ForeignKey(Etapa, on_delete=models.SET_NULL, null=True, blank=True, related_name='pedidos_na_etapa')
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='em_fluxo')
     funcionario_na_etapa = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='pedidos_assumidos')
+    status_fila = models.CharField(max_length=20, choices=STATUS_FILA, default='ativo', help_text='Status na fila de trabalho (Ativo/Pendente)')
+    tipo_expedicao = models.CharField(
+        max_length=20,
+        choices=[('motoboy', 'Motoboy'), ('sedex', 'Sedex')],
+        null=True,
+        blank=True,
+        help_text='Tipo de expedição selecionado pelo funcionário'
+    )
     
     informacoes_gerais = models.TextField(blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -307,6 +315,71 @@ class Pedido(models.Model):
                 self.etapa_atual = None
                 self.funcionario_na_etapa = None
                 self.save()
+    
+    def pode_assumir_fila(self, usuario):
+        """Verifica se o usuário pode assumir este pedido"""
+        # Verificar se é etapa de Expedição
+        is_expedicao = self.etapa_atual and self.etapa_atual.nome.lower() == 'expedição'
+        
+        if not is_expedicao:
+            # Máximo 5 pedidos por funcionário (APENAS para etapas diferentes de Expedição)
+            pedidos_count = Pedido.objects.filter(
+                funcionario_na_etapa=usuario,
+                status='em_fluxo'
+            ).count()
+            
+            if pedidos_count >= 5:
+                return False, "Você atingiu o máximo de 5 pedidos simultâneos"
+            
+            # Verificar se há mais de 1 ativo por funcionário (apenas para outras etapas)
+            ativo_count = Pedido.objects.filter(
+                funcionario_na_etapa=usuario,
+                status='em_fluxo',
+                status_fila='ativo'
+            ).count()
+            
+            if ativo_count >= 1 and self.status_fila == 'ativo':
+                return False, "Você já tem 1 pedido ativo. Coloque-o como pendente para ativar este."
+        
+        return True, "OK"
+    
+    def marcar_como_pendente(self, em_sessao_expedicao=False):
+        """Marca o pedido como pendente (não aplicável se tipo_expedicao for motoboy ou sedex)"""
+        # Se tipo_expedicao é motoboy ou sedex, não pode ficar pendente
+        if self.tipo_expedicao in ['motoboy', 'sedex']:
+            return False, "Pedidos com expedição definida (Motoboy/Sedex) não podem ficar pendentes"
+        
+        # Se está em sessão de expedição (tela de motoboy/sedex), não pode ficar pendente
+        if em_sessao_expedicao:
+            return False, "Pedidos em sessão de expedição não podem ficar pendentes"
+        
+        self.status_fila = 'pendente'
+        self.save()
+        return True, "Pedido marcado como pendente"
+    
+    def marcar_como_ativo(self):
+        """Marca o pedido como ativo e coloca outros em pendente (NÃO aplicável para Expedição)"""
+        if not self.funcionario_na_etapa:
+            return False, "Pedido não tem funcionário designado"
+        
+        # Para Expedição, sempre é ativo (sem lógica de pendente)
+        is_expedicao = self.etapa_atual and self.etapa_atual.nome.lower() == 'expedição'
+        if is_expedicao:
+            self.status_fila = 'ativo'
+            self.save()
+            return True, "Pedido está ativo (Expedição não possui status pendente)"
+        
+        # Para outras etapas: colocar todos os outros pedidos deste funcionário como pendente
+        Pedido.objects.filter(
+            funcionario_na_etapa=self.funcionario_na_etapa,
+            status='em_fluxo',
+            status_fila='ativo'
+        ).exclude(id=self.id).update(status_fila='pendente')
+        
+        # Ativar este pedido
+        self.status_fila = 'ativo'
+        self.save()
+        return True, "Pedido ativado com sucesso"
 
 
 class HistoricoEtapa(models.Model):
@@ -335,6 +408,28 @@ class HistoricoEtapa(models.Model):
             delta = self.timestamp_fim - self.timestamp_inicio
             return int(delta.total_seconds() // 60)
         return None
+    
+    @property
+    def tempo_gasto_formatado(self):
+        """Retorna tempo gasto formatado como 'Xh Xmin Xseg' ou apenas os campos relevantes"""
+        if self.timestamp_fim and self.timestamp_inicio:
+            delta = self.timestamp_fim - self.timestamp_inicio
+            total_segundos = int(delta.total_seconds())
+            
+            horas = total_segundos // 3600
+            minutos = (total_segundos % 3600) // 60
+            segundos = total_segundos % 60
+            
+            partes = []
+            if horas > 0:
+                partes.append(f"{horas}h")
+            if minutos > 0:
+                partes.append(f"{minutos}min")
+            if segundos > 0 or not partes:  # Mostra segundos sempre que houver, ou se for 0 segundos (menos de 1 minuto)
+                partes.append(f"{segundos}seg")
+            
+            return " ".join(partes)
+        return "-"
 
 
 class ChecklistExecucao(models.Model):
@@ -600,3 +695,95 @@ class LogAuditoria(models.Model):
     def __str__(self):
         usuario_nome = self.usuario.username if self.usuario else 'Sistema'
         return f"{usuario_nome} - {self.get_acao_display()} - {self.timestamp}"
+
+class ControlePergunta(models.Model):
+    """
+    Define perguntas para o Controle de Qualidade
+    Admin cria as perguntas e define o tipo de resposta esperada
+    """
+    TIPO_CAMPO_CHOICES = [
+        ('texto', 'Texto Simples'),
+        ('textarea', 'Texto Longo'),
+        ('checkbox', 'Sim/Não'),
+        ('selecao', 'Seleção Múltipla'),
+        ('numero', 'Número'),
+    ]
+    
+    etapa = models.ForeignKey(Etapa, on_delete=models.CASCADE, related_name='perguntas_controle_qualidade')
+    pergunta = models.CharField(max_length=500, help_text="Ex: Conferiu os produtos?")
+    tipo_campo = models.CharField(max_length=20, choices=TIPO_CAMPO_CHOICES, default='texto')
+    descricao = models.TextField(blank=True, help_text="Descrição adicional ou instruções")
+    ativo = models.BooleanField(default=True)
+    ordem = models.IntegerField(default=0, help_text="Ordem de apresentação das perguntas")
+    obrigatorio = models.BooleanField(default=True, help_text="Se a resposta é obrigatória")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['ordem', 'id']
+        verbose_name = 'Pergunta de Controle de Qualidade'
+        verbose_name_plural = 'Perguntas de Controle de Qualidade'
+        unique_together = ['etapa', 'pergunta']
+    
+    def __str__(self):
+        return f"{self.etapa.nome} - {self.pergunta}"
+
+
+class ControlePerguntaOpcao(models.Model):
+    """
+    Opções para perguntas de seleção múltipla ou checkbox
+    Ex: Para checkbox "Conferiu os produtos?" - opções seriam "Sim" e "Não"
+    """
+    pergunta = models.ForeignKey(ControlePergunta, on_delete=models.CASCADE, related_name='opcoes')
+    texto_opcao = models.CharField(max_length=200)
+    ordem = models.IntegerField(default=0)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['ordem', 'id']
+        verbose_name = 'Opção de Pergunta'
+        verbose_name_plural = 'Opções de Pergunta'
+    
+    def __str__(self):
+        return f"{self.pergunta.pergunta} - {self.texto_opcao}"
+
+
+class HistoricoControleQualidade(models.Model):
+    """
+    Histórico das respostas do Controle de Qualidade preenchido pelo funcionário
+    """
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='historico_controle_qualidade')
+    funcionario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='respostas_controle_qualidade')
+    historico_etapa = models.OneToOneField(HistoricoEtapa, on_delete=models.CASCADE, related_name='controle_qualidade', null=True, blank=True)
+    preenchido_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-preenchido_em']
+        verbose_name = 'Histórico de Controle de Qualidade'
+        verbose_name_plural = 'Histórico de Controles de Qualidade'
+    
+    def __str__(self):
+        return f"{self.pedido} - {self.funcionario.username} - {self.preenchido_em.strftime('%d/%m/%Y %H:%M')}"
+
+
+class RespostaControleQualidade(models.Model):
+    """
+    Armazena as respostas individuais para cada pergunta
+    """
+    historico_controle = models.ForeignKey(HistoricoControleQualidade, on_delete=models.CASCADE, related_name='respostas')
+    pergunta = models.ForeignKey(ControlePergunta, on_delete=models.CASCADE)
+    resposta_texto = models.TextField(blank=True, help_text="Para respostas de texto ou textarea")
+    resposta_opcao = models.ForeignKey(ControlePerguntaOpcao, on_delete=models.SET_NULL, null=True, blank=True, help_text="Para respostas de checkbox ou seleção")
+    preenchido_em = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['pergunta__ordem', 'pergunta__id']
+        verbose_name = 'Resposta de Controle de Qualidade'
+        verbose_name_plural = 'Respostas de Controle de Qualidade'
+        unique_together = ['historico_controle', 'pergunta']
+    
+    def __str__(self):
+        if self.resposta_opcao:
+            return f"{self.pergunta.pergunta} - {self.resposta_opcao.texto_opcao}"
+        return f"{self.pergunta.pergunta} - {self.resposta_texto[:50]}"

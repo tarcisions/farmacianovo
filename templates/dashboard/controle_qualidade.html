@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block title %}Controle de Qualidade{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-clipboard-check text-primary"></i> Controle de Qualidade</h1>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard:funcionario' %}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'dashboard:meus_pedidos' %}">Meus Pedidos</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Controle de Qualidade</li>
+    </ol>
+</nav>
+
+<div class="row g-4">
+    <!-- Informações do Pedido -->
+    <div class="col-lg-12">
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <strong>Informações do Pedido</strong>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <p class="mb-0"><small class="text-muted">ID API</small></p>
+                        <p class="fw-bold text-primary">{{ pedido.id_api }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-0"><small class="text-muted">Nome</small></p>
+                        <p class="fw-bold" style="word-wrap: break-word;">{{ pedido.nome }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-0"><small class="text-muted">Quantidade</small></p>
+                        <p class="fw-bold"><span class="badge bg-light text-dark">{{ pedido.quantidade }}</span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-0"><small class="text-muted">Tipo</small></p>
+                        <p class="fw-bold">
+                            {% if pedido.tipo_identificado %}
+                            <span class="badge bg-info">{{ pedido.tipo_identificado }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Desconhecido</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário de Controle de Qualidade -->
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <strong><i class="bi bi-clipboard2-check"></i> Formulário de Controle de Qualidade</strong>
+                <span class="badge bg-white text-success">{{ perguntas.count }} pergunta{{ perguntas.count|pluralize }}</span>
+            </div>
+            <div class="card-body">
+                {% if perguntas %}
+                    <form method="post" id="formulario-controle" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Container com scroll interno -->
+                        <div class="perguntas-container" style="max-height: 600px; overflow-y: auto; padding-right: 10px;">
+                            {% for pergunta in perguntas %}
+                            <div class="card mb-3 border-light shadow-sm">
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">
+                                            {{ pergunta.pergunta }}
+                                            {% if pergunta.obrigatorio %}
+                                            <span class="text-danger">*</span>
+                                            {% endif %}
+                                        </label>
+                                        
+                                        {% if pergunta.descricao %}
+                                        <small class="d-block text-muted mb-2">{{ pergunta.descricao }}</small>
+                                        {% endif %}
+
+                                        <!-- Campo de Texto Simples -->
+                                        {% if pergunta.tipo_campo == 'texto' %}
+                                            <input 
+                                                type="text" 
+                                                class="form-control {% if pergunta.obrigatorio %}required{% endif %}"
+                                                name="resposta_{{ pergunta.id }}"
+                                                placeholder="Digite sua resposta..."
+                                                value="{% for resp in respostas_salvas %}{% if resp.pergunta_id == pergunta.id %}{{ resp.resposta_texto }}{% endif %}{% endfor %}"
+                                                {% if pergunta.obrigatorio %}required{% endif %}
+                                            >
+
+                                        <!-- Campo de Texto Longo -->
+                                        {% elif pergunta.tipo_campo == 'textarea' %}
+                                            <textarea 
+                                                class="form-control {% if pergunta.obrigatorio %}required{% endif %}"
+                                                name="resposta_{{ pergunta.id }}"
+                                                rows="4"
+                                                placeholder="Digite sua resposta..."
+                                                {% if pergunta.obrigatorio %}required{% endif %}
+                                            >{% for resp in respostas_salvas %}{% if resp.pergunta_id == pergunta.id %}{{ resp.resposta_texto }}{% endif %}{% endfor %}</textarea>
+
+                                        <!-- Checkbox (Sim/Não) -->
+                                        {% elif pergunta.tipo_campo == 'checkbox' %}
+                                            <div class="btn-group-vertical w-100" role="group">
+                                                {% for opcao in pergunta.opcoes.all %}
+                                                <input 
+                                                    type="radio" 
+                                                    class="btn-check {% if pergunta.obrigatorio %}required{% endif %}"
+                                                    name="opcao_{{ pergunta.id }}"
+                                                    id="opcao_{{ opcao.id }}"
+                                                    value="{{ opcao.id }}"
+                                                    {% for resp in respostas_salvas %}{% if resp.pergunta_id == pergunta.id and resp.resposta_opcao_id == opcao.id %}checked{% endif %}{% endfor %}
+                                                    {% if pergunta.obrigatorio %}required{% endif %}
+                                                >
+                                                <label class="btn btn-outline-primary w-100" for="opcao_{{ opcao.id }}">
+                                                    {{ opcao.texto_opcao }}
+                                                </label>
+                                                {% endfor %}
+                                            </div>
+
+                                        <!-- Seleção Múltipla -->
+                                        {% elif pergunta.tipo_campo == 'selecao' %}
+                                            <select 
+                                                class="form-select {% if pergunta.obrigatorio %}required{% endif %}"
+                                                name="opcao_{{ pergunta.id }}"
+                                                {% if pergunta.obrigatorio %}required{% endif %}
+                                            >
+                                                <option value="">-- Selecione uma opção --</option>
+                                                {% for opcao in pergunta.opcoes.all %}
+                                                <option 
+                                                    value="{{ opcao.id }}"
+                                                    {% for resp in respostas_salvas %}{% if resp.pergunta_id == pergunta.id and resp.resposta_opcao_id == opcao.id %}selected{% endif %}{% endfor %}
+                                                >
+                                                    {{ opcao.texto_opcao }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+
+                                        <!-- Campo de Número -->
+                                        {% elif pergunta.tipo_campo == 'numero' %}
+                                            <input 
+                                                type="number" 
+                                                class="form-control {% if pergunta.obrigatorio %}required{% endif %}"
+                                                name="resposta_{{ pergunta.id }}"
+                                                placeholder="Digite um número..."
+                                                value="{% for resp in respostas_salvas %}{% if resp.pergunta_id == pergunta.id %}{{ resp.resposta_texto }}{% endif %}{% endfor %}"
+                                                {% if pergunta.obrigatorio %}required{% endif %}
+                                            >
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                            <button type="submit" class="btn btn-success btn-lg flex-grow-1">
+                                <i class="bi bi-check-circle"></i> Finalizar Controle de Qualidade
+                            </button>
+                            <a href="{% url 'dashboard:funcionario' %}" class="btn btn-secondary btn-lg">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox display-4 text-muted opacity-50"></i>
+                        <p class="text-muted mt-3">
+                            <strong>Nenhuma pergunta configurada</strong>
+                            <br>
+                            <small>O administrador ainda não configurou perguntas para esta etapa</small>
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .perguntas-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .perguntas-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .perguntas-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+    }
+    
+    .perguntas-container::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    .card {
+        transition: box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    }
+</style>
+
+<script>
+    // Validação de formulário Bootstrap
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            var forms = document.querySelectorAll('.needs-validation');
+            Array.prototype.slice.call(forms).forEach(function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+</script>
+
+{% endblock %}

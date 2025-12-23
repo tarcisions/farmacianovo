@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Limite de Pedidos Atingido{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:funcionario' %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:meus_pedidos' %}">
+            <i class="bi bi-list-task"></i> Meus Pedidos
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'dashboard:pedidos_disponiveis' %}">
+            <i class="bi bi-play-circle"></i> Pedidos Disponíveis
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-exclamation-circle text-danger"></i> Limite de Pedidos Atingido</h1>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <strong><i class="bi bi-stop-circle"></i> Você atingiu o limite máximo</strong>
+            </div>
+            <div class="card-body text-center py-5">
+                <i class="bi bi-exclamation-triangle display-1 text-danger mb-3"></i>
+                
+                <h5 class="card-title mt-3">Limite de 5 Pedidos Simultâneos</h5>
+                <p class="card-text text-muted">
+                    Você já possui <strong>5 pedidos em andamento</strong>. Para assumir novos pedidos, você precisa <strong>concluir</strong> os atuais.
+                </p>
+                
+                <div class="alert alert-info mt-4" role="alert">
+                    <i class="bi bi-lightbulb"></i> <strong>Dica:</strong> Você pode colocar pedidos como "PENDENTE" e trabalhar em outro, mas o limite continua sendo 5 simultaneamente.
+                </div>
+                
+                <hr class="my-4">
+                
+                <div class="d-flex gap-2 justify-content-center">
+                    <a href="{% url 'dashboard:meus_pedidos' %}" class="btn btn-primary">
+                        <i class="bi bi-list-task"></i> Ver Meus Pedidos
+                    </a>
+                    <a href="{% url 'dashboard:pedidos_disponiveis' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

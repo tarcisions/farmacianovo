@@ -7,13 +7,14 @@ from .models import (
     PontuacaoFixaMensal, HistoricoAplicacaoPontuacaoFixa,
     BonusFaixa, HistoricoBonusMensal,
     ConfiguracaoExpedicao, RegistroExpedicao,
-    LogAuditoria
+    LogAuditoria,
+    ControlePergunta, ControlePerguntaOpcao, HistoricoControleQualidade, RespostaControleQualidade
 )
 
 @admin.register(Etapa)
 class EtapaAdmin(admin.ModelAdmin):
-    list_display = ['sequencia', 'nome', 'grupo', 'ativa', 'se_gera_pontos']
-    list_filter = ['grupo', 'ativa']
+    list_display = ['sequencia', 'nome', 'ativa', 'se_gera_pontos', 'pontos_fixos_etapa']
+    list_filter = ['ativa']
     search_fields = ['nome']
     ordering = ['sequencia']
 
@@ -155,4 +156,69 @@ class LogAuditoriaAdmin(admin.ModelAdmin):
         return False
     
     def has_delete_permission(self, request, obj=None):
+        return False
+
+class ControlePerguntaOpcaoInline(admin.TabularInline):
+    model = ControlePerguntaOpcao
+    extra = 1
+    fields = ['texto_opcao', 'ordem']
+    ordering = ['ordem']
+
+
+@admin.register(ControlePergunta)
+class ControlePerguntaAdmin(admin.ModelAdmin):
+    list_display = ['pergunta', 'etapa', 'tipo_campo', 'ativo', 'obrigatorio', 'ordem']
+    list_filter = ['etapa', 'tipo_campo', 'ativo', 'obrigatorio']
+    search_fields = ['pergunta', 'descricao']
+    ordering = ['etapa', 'ordem']
+    inlines = [ControlePerguntaOpcaoInline]
+    fieldsets = (
+        ('Pergunta', {
+            'fields': ('etapa', 'pergunta', 'tipo_campo', 'ordem')
+        }),
+        ('Configuração', {
+            'fields': ('descricao', 'obrigatorio', 'ativo')
+        }),
+    )
+
+
+@admin.register(ControlePerguntaOpcao)
+class ControlePerguntaOpcaoAdmin(admin.ModelAdmin):
+    list_display = ['texto_opcao', 'pergunta', 'ordem']
+    list_filter = ['pergunta__etapa', 'pergunta']
+    search_fields = ['texto_opcao', 'pergunta__pergunta']
+    ordering = ['pergunta', 'ordem']
+
+
+class RespostaControleQualidadeInline(admin.TabularInline):
+    model = RespostaControleQualidade
+    extra = 0
+    readonly_fields = ['pergunta', 'resposta_texto', 'resposta_opcao', 'preenchido_em']
+    can_delete = False
+    fields = ['pergunta', 'resposta_texto', 'resposta_opcao']
+
+
+@admin.register(HistoricoControleQualidade)
+class HistoricoControleQualidadeAdmin(admin.ModelAdmin):
+    list_display = ['pedido', 'funcionario', 'preenchido_em', 'atualizado_em']
+    list_filter = ['funcionario', 'preenchido_em']
+    search_fields = ['pedido__nome', 'funcionario__username', 'pedido__codigo_pedido']
+    date_hierarchy = 'preenchido_em'
+    readonly_fields = ['pedido', 'funcionario', 'historico_etapa', 'preenchido_em', 'atualizado_em']
+    inlines = [RespostaControleQualidadeInline]
+    can_delete = False
+    
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(RespostaControleQualidade)
+class RespostaControleQualidadeAdmin(admin.ModelAdmin):
+    list_display = ['pergunta', 'historico_controle', 'resposta_texto', 'resposta_opcao']
+    list_filter = ['pergunta__etapa', 'pergunta']
+    search_fields = ['historico_controle__pedido__nome', 'pergunta__pergunta']
+    readonly_fields = ['pergunta', 'historico_controle', 'resposta_texto', 'resposta_opcao', 'preenchido_em']
+    can_delete = False
+    
+    def has_add_permission(self, request):
         return False

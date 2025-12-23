@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Controle de Qualidade - Lista{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-clipboard-check text-primary"></i> Controle de Qualidade</h1>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard:gerente' %}">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Controle de Qualidade</li>
+    </ol>
+</nav>
+
+<!-- Resumo -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="card-text mb-0">Pedidos com CQ</p>
+                        <h3 class="mb-0">{{ total_pedidos }}</h3>
+                    </div>
+                    <i class="bi bi-clipboard-check display-4 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Pedidos -->
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <strong>Pedidos com Respostas de Controle de Qualidade</strong>
+    </div>
+    <div class="card-body p-0">
+        {% if historicos %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="100">ID API</th>
+                            <th>Código</th>
+                            <th>Nome do Pedido</th>
+                            <th>Funcionário</th>
+                            <th>Data Preenchimento</th>
+                            <th width="150">Respostas</th>
+                            <th width="120">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for historico in historicos %}
+                        <tr>
+                            <td><strong class="text-primary">{{ historico.pedido.id_api }}</strong></td>
+                            <td><code class="text-muted">{{ historico.pedido.codigo_pedido }}</code></td>
+                            <td>
+                                <small style="word-wrap: break-word; white-space: normal; max-width: 200px; display: inline-block;">
+                                    {{ historico.pedido.nome }}
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">
+                                    {{ historico.funcionario.get_full_name|default:historico.funcionario.username }}
+                                </span>
+                            </td>
+                            <td>
+                                <small>{{ historico.preenchido_em|date:"d/m/Y H:i" }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-success">
+                                    {{ historico.respostas.count }} resposta{{ historico.respostas.count|pluralize }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'dashboard:historico_controle_qualidade' historico.pedido.id %}" 
+                                   class="btn btn-sm btn-primary" title="Visualizar respostas">
+                                    <i class="bi bi-eye"></i> Ver
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            {% if historicos.has_other_pages %}
+            <nav aria-label="Paginação" class="d-flex justify-content-center mt-4 mb-4">
+                <ul class="pagination">
+                    {% if historicos.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1">Primeira</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ historicos.previous_page_number }}">Anterior</a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in historicos.paginator.page_range %}
+                        {% if historicos.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if historicos.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ historicos.next_page_number }}">Próxima</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ historicos.paginator.num_pages }}">Última</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+        {% else %}
+            <!-- Nenhum histórico -->
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-4 text-muted opacity-50"></i>
+                <p class="text-muted mt-3">
+                    <strong>Nenhum Controle de Qualidade realizado</strong>
+                    <br>
+                    <small>Nenhum funcionário preencheu Controle de Qualidade ainda</small>
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Botão de Voltar -->
+<div class="mt-4">
+    <a href="{% url 'dashboard:gerente' %}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+    </a>
+</div>
+
+<style>
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+    }
+</style>
+
+{% endblock %}

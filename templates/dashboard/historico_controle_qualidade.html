@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+
+{% block title %}Histórico de Controle de Qualidade{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-eye text-primary"></i> Histórico de Controle de Qualidade</h1>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard:gerente' %}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'dashboard:pedidos' %}">Gestão de Pedidos</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Controle de Qualidade</li>
+    </ol>
+</nav>
+
+<!-- Informações do Pedido -->
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <strong>Informações do Pedido</strong>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-2">
+                        <p class="mb-0"><small class="text-muted">ID API</small></p>
+                        <p class="fw-bold text-primary">{{ pedido.id_api }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-0"><small class="text-muted">Código Pedido</small></p>
+                        <p class="fw-bold"><code>{{ pedido.codigo_pedido }}</code></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-0"><small class="text-muted">Nome</small></p>
+                        <p class="fw-bold" style="word-wrap: break-word;">{{ pedido.nome }}</p>
+                    </div>
+                    <div class="col-md-2">
+                        <p class="mb-0"><small class="text-muted">Quantidade</small></p>
+                        <p class="fw-bold"><span class="badge bg-light text-dark">{{ pedido.quantidade }}</span></p>
+                    </div>
+                    <div class="col-md-2">
+                        <p class="mb-0"><small class="text-muted">Status</small></p>
+                        <p class="fw-bold">
+                            {% if pedido.status == 'concluido' %}
+                            <span class="badge bg-success">{{ pedido.get_status_display }}</span>
+                            {% elif pedido.status == 'em_fluxo' %}
+                            <span class="badge bg-warning text-dark">{{ pedido.get_status_display }}</span>
+                            {% else %}
+                            <span class="badge bg-danger">{{ pedido.get_status_display }}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if historicos_com_respostas %}
+    <!-- Históricos de Controle de Qualidade -->
+    <div class="row">
+        {% for item in historicos_com_respostas %}
+        <div class="col-lg-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong><i class="bi bi-person-check"></i> Responsável: {{ item.historico.funcionario.get_full_name|default:item.historico.funcionario.username }}</strong>
+                        </div>
+                        <div>
+                            <small>{{ item.historico.preenchido_em|date:"d/m/Y H:i" }}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if item.respostas %}
+                        <div class="respostas-container" style="max-height: 500px; overflow-y: auto;">
+                            {% for resposta in item.respostas %}
+                            <div class="row mb-4 pb-3 border-bottom">
+                                <div class="col-lg-5">
+                                    <h6 class="fw-bold text-primary">{{ resposta.pergunta.pergunta }}</h6>
+                                    {% if resposta.pergunta.descricao %}
+                                    <small class="text-muted d-block">{{ resposta.pergunta.descricao }}</small>
+                                    {% endif %}
+                                    <small class="text-muted">
+                                        Tipo: 
+                                        <span class="badge bg-light text-dark">{{ resposta.pergunta.get_tipo_campo_display }}</span>
+                                    </small>
+                                </div>
+                                <div class="col-lg-7">
+                                    <div class="card border-left border-success">
+                                        <div class="card-body">
+                                            {% if resposta.resposta_opcao %}
+                                                <p class="mb-0">
+                                                    <strong>{{ resposta.resposta_opcao.texto_opcao }}</strong>
+                                                </p>
+                                            {% elif resposta.resposta_texto %}
+                                                <p class="mb-0" style="word-wrap: break-word; white-space: normal;">
+                                                    {{ resposta.resposta_texto }}
+                                                </p>
+                                            {% else %}
+                                                <p class="mb-0 text-muted">
+                                                    <em>Sem resposta</em>
+                                                </p>
+                                            {% endif %}
+                                            <small class="text-muted d-block mt-2">
+                                                Preenchida em: {{ resposta.preenchido_em|date:"d/m/Y H:i" }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Informações adicionais do histórico -->
+                        <div class="mt-4 pt-3 border-top">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-2">
+                                        <small class="text-muted">Primeira submissão:</small>
+                                        <br>
+                                        <strong>{{ item.historico.preenchido_em|date:"d/m/Y \à\s H:i:s" }}</strong>
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-2">
+                                        <small class="text-muted">Última atualização:</small>
+                                        <br>
+                                        <strong>{{ item.historico.atualizado_em|date:"d/m/Y \à\s H:i:s" }}</strong>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-inbox display-4 text-muted opacity-50"></i>
+                            <p class="text-muted mt-2">Nenhuma resposta registrada</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <!-- Nenhum histórico -->
+    <div class="card">
+        <div class="card-body">
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-4 text-muted opacity-50"></i>
+                <p class="text-muted mt-3">
+                    <strong>Nenhum Controle de Qualidade realizado</strong>
+                    <br>
+                    <small>Este pedido ainda não passou pela etapa de Controle de Qualidade ou nenhum formulário foi preenchido</small>
+                </p>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Botão de Voltar -->
+<div class="mt-4 d-flex gap-2">
+    <a href="{% url 'dashboard:pedidos' %}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar para Gestão de Pedidos
+    </a>
+</div>
+
+<style>
+    .respostas-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .respostas-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .respostas-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+    }
+    
+    .respostas-container::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    .border-left {
+        border-left: 4px solid !important;
+    }
+
+    .card {
+        transition: box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    }
+</style>
+
+{% endblock %}

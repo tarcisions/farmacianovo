@@ -19,45 +19,71 @@
             </div>
             <div class="card-body p-0">
                 {% if pedidos_disponiveis %}
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>ID</th>
-                                <th>IDPEDIDO</th>
-                                <th>Nome</th>
-                                <th>Tipo</th>
-                                <th>Qtd</th>
-                                <th width="80">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for pedido in pedidos_disponiveis %}
-                            <tr>
-                                <td><strong class="text-primary">{{ pedido.id_api }}</strong></td>
-                                <td><code class="text-muted">{{ pedido.id_pedido_api|default:"-" }}</code></td>
-                                <td><small style="word-wrap: break-word; white-space: normal; max-width: 200px; display: inline-block;">{{ pedido.nome }}</small></td>
-                                <td>
-                                    {% if pedido.tipo_identificado %}
-                                    <span class="badge bg-info">{{ pedido.tipo_identificado }}</span>
-                                    {% endif %}
-                                </td>
-                                <td><span class="badge bg-light text-dark">{{ pedido.quantidade }}</span></td>
-                                <td>
-                                    <form method="post" style="display: inline;">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="acao" value="adicionar">
-                                        <input type="hidden" name="pedido_id" value="{{ pedido.id }}">
-                                        <button type="submit" class="btn btn-sm btn-success" title="Adicionar à Rota em Montagem">
-                                            <i class="bi bi-arrow-down-circle"></i> Mover
+                <form method="post" id="form-pedidos-motoboy">
+                    {% csrf_token %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="40">
+                                        <input type="checkbox" id="select-all-motoboy" class="form-check-input" 
+                                               onclick="toggleAllCheckboxes(this, 'select-pedido-motoboy')">
+                                    </th>
+                                    <th>ID</th>
+                                    <th>IDPEDIDO</th>
+                                    <th>Nome</th>
+                                    <th>Tipo</th>
+                                    <th>Qtd</th>
+                                    <th width="120">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pedido in pedidos_disponiveis %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" name="pedidos_selecionados" value="{{ pedido.id }}" 
+                                               class="form-check-input select-pedido-motoboy"
+                                               onchange="updateSelectAll('select-all-motoboy', 'select-pedido-motoboy')">
+                                    </td>
+                                    <td><strong class="text-primary">{{ pedido.id_api }}</strong></td>
+                                    <td><code class="text-muted">{{ pedido.id_pedido_api|default:"-" }}</code></td>
+                                    <td><small style="word-wrap: break-word; white-space: normal; max-width: 200px; display: inline-block;">{{ pedido.nome }}</small></td>
+                                    <td>
+                                        {% if pedido.tipo_identificado %}
+                                        <span class="badge bg-info">{{ pedido.tipo_identificado }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge bg-light text-dark">{{ pedido.quantidade }}</span></td>
+                                    <td>
+                                        <button type="submit" name="acao" value="adicionar_individual" 
+                                                class="btn btn-sm btn-success" title="Adicionar este pedido à rota"
+                                                onclick="document.getElementById('pedido-individual').value='{{ pedido.id }}'; return true;">
+                                            <i class="bi bi-plus-circle"></i> Adicionar
                                         </button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Ações em lote -->
+                    {% if pedidos_disponiveis %}
+                    <div class="p-3 border-top bg-light d-flex gap-2 flex-wrap">
+                        <button type="button" id="btn-toggle-select" class="btn btn-secondary" onclick="toggleSelectAll('select-all-motoboy', 'select-pedido-motoboy');">
+                            <i class="bi bi-check2-square"></i> <span id="toggle-text">Selecionar Tudo</span>
+                        </button>
+                        <button type="submit" name="acao" value="adicionar_selecionados" id="btn-adicionar" class="btn btn-success" disabled style="pointer-events: none; opacity: 0.5;">
+                            <i class="bi bi-check-circle"></i> Adicionar Selecionados à Rota
+                        </button>
+                        <button type="submit" name="acao" value="remover_expedicao_lote" id="btn-voltar-link" class="btn btn-warning" disabled style="pointer-events: none; opacity: 0.5;">
+                            <i class="bi bi-x-circle"></i> Remover Expedição
+                        </button>
+                    </div>
+                    {% endif %}
+                    
+                    <input type="hidden" id="pedido-individual" name="pedido_id" value="">
+                </form>
                 {% else %}
                 <div class="text-center py-4 text-muted">
                     <i class="bi bi-inbox display-4"></i>
@@ -103,14 +129,24 @@
                                     <span class="ms-2">Qtd: {{ pedido.quantidade }}</span>
                                 </small>
                             </div>
-                            <form method="post" style="display: inline;">
-                                {% csrf_token %}
-                                <input type="hidden" name="acao" value="remover">
-                                <input type="hidden" name="pedido_id" value="{{ pedido.id }}">
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Devolver para Pedidos Disponíveis">
-                                    <i class="bi bi-arrow-up-circle"></i>
-                                </button>
-                            </form>
+                            <div class="d-flex gap-2">
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="acao" value="remover">
+                                    <input type="hidden" name="pedido_id" value="{{ pedido.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Devolver para Pedidos Disponíveis">
+                                        <i class="bi bi-arrow-up-circle"></i>
+                                    </button>
+                                </form>
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="acao" value="remover_expedicao">
+                                    <input type="hidden" name="pedido_id" value="{{ pedido.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Remover esta expedição (Motoboy) e selecionar outra">
+                                        <i class="bi bi-x-circle"></i> Remover Expedição
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
@@ -124,7 +160,7 @@
                     </button>
                 </form>
 
-                <button type="button" class="btn btn-outline-secondary w-100" onclick="location.href='{% url 'dashboard:expedicao_motoboy' %}'">
+                <button type="button" class="btn btn-outline-secondary w-100" data-url="{% url 'dashboard:expedicao_motoboy' %}" onclick="location.href=this.getAttribute('data-url'); return false;">
                     <i class="bi bi-arrow-counterclockwise"></i> Limpar Tudo
                 </button>
 
@@ -142,5 +178,92 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleAllCheckboxes(selectAllCheckbox, className) {
+    const checkboxes = document.querySelectorAll('.' + className);
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    updateBtnVoltar();
+}
+
+function updateSelectAll(selectAllId, className) {
+    const selectAllCheckbox = document.getElementById(selectAllId);
+    const checkboxes = document.querySelectorAll('.' + className);
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    selectAllCheckbox.checked = allChecked;
+    updateBtnVoltar();
+}
+
+function updateBtnVoltar() {
+    const checkboxes = document.querySelectorAll('input[name="pedidos_selecionados"]:checked');
+    const btnLink = document.getElementById('btn-voltar-link');
+    const btnAdicionar = document.getElementById('btn-adicionar');
+    
+    if (checkboxes.length > 0) {
+        // Habilitar botões se houver algum pedido selecionado
+        btnLink.removeAttribute('disabled');
+        btnLink.style.pointerEvents = 'auto';
+        btnLink.style.opacity = '1';
+        
+        btnAdicionar.removeAttribute('disabled');
+        btnAdicionar.style.pointerEvents = 'auto';
+        btnAdicionar.style.opacity = '1';
+    } else {
+        // Desabilitar botões se não houver pedidos selecionados
+        btnLink.setAttribute('disabled', 'disabled');
+        btnLink.style.pointerEvents = 'none';
+        btnLink.style.opacity = '0.5';
+        
+        btnAdicionar.setAttribute('disabled', 'disabled');
+        btnAdicionar.style.pointerEvents = 'none';
+        btnAdicionar.style.opacity = '0.5';
+    }
+}
+
+function toggleSelectAll(selectAllId, className) {
+    const selectAllCheckbox = document.getElementById(selectAllId);
+    const checkboxes = document.querySelectorAll('.' + className);
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    // Se todos estão checados, desmarcar todos
+    // Se não todos estão checados, marcar todos
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = !allChecked;
+    });
+    
+    selectAllCheckbox.checked = !allChecked;
+    updateToggleText();
+    updateBtnVoltar();
+}
+
+function updateToggleText() {
+    const checkboxes = document.querySelectorAll('input[name="pedidos_selecionados"]');
+    const checkedCount = document.querySelectorAll('input[name="pedidos_selecionados"]:checked').length;
+    const toggleText = document.getElementById('toggle-text');
+    
+    if (checkedCount === checkboxes.length && checkboxes.length > 0) {
+        toggleText.textContent = 'Desselecionar Tudo';
+    } else {
+        toggleText.textContent = 'Selecionar Tudo';
+    }
+}
+
+// Verificar estado inicial
+document.addEventListener('DOMContentLoaded', function() {
+    updateToggleText();
+    updateBtnVoltar();
+});
+
+// Atualizar texto quando checkbox individual muda
+document.addEventListener('change', function(e) {
+    if (e.target.name === 'pedidos_selecionados') {
+        updateToggleText();
+        updateBtnVoltar();
+    }
+});
+</script>
+
 {% endblock %}
 

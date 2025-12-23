@@ -206,8 +206,8 @@ class Command(BaseCommand):
                 {'etapa': etapa_conf, 'nome': 'Reconferência concluída', 'pontos_do_check': Decimal('0'), 'obrigatorio': False, 'ordem': 3},
                 
                 # Expedição
-                {'etapa': etapa_expedicao, 'nome': 'ROTA MOTOBOY', 'pontos_do_check': Decimal('15'), 'obrigatorio': False, 'ordem': 1, 'tipo_contagem_sedex': 'por_rota'},
-                {'etapa': etapa_expedicao, 'nome': 'SEDEX', 'pontos_do_check': Decimal('15'), 'obrigatorio': False, 'ordem': 2, 'tipo_contagem_sedex': 'por_dia'},
+                {'etapa': etapa_expedicao, 'nome': 'ROTA MOTOBOY', 'pontos_do_check': Decimal('15'), 'obrigatorio': False, 'ordem': 1},
+                {'etapa': etapa_expedicao, 'nome': 'SEDEX', 'pontos_do_check': Decimal('15'), 'obrigatorio': False, 'ordem': 2},
             ]
             
             for check_data in checklists:

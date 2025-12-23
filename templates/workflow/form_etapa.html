@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block sidebar %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-diagram-3 text-primary"></i> {{ titulo }}</h1>
+    <a href="{% url 'workflow:lista_etapas' %}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.nome.id_for_label }}" class="form-label fw-bold">Nome da Etapa *</label>
+                    {{ form.nome }}
+                    {% if form.nome.errors %}
+                        <div class="alert alert-danger mt-2">{{ form.nome.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.sequencia.id_for_label }}" class="form-label fw-bold">Sequência *</label>
+                    {{ form.sequencia }}
+                    {% if form.sequencia.errors %}
+                        <div class="alert alert-danger mt-2">{{ form.sequencia.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.pontos_fixos_etapa.id_for_label }}" class="form-label fw-bold">Pontos Fixos da Etapa</label>
+                    <small class="text-muted d-block mb-2">Pontos adicionados ao concluir a etapa (além dos checklists, se houver)</small>
+                    {{ form.pontos_fixos_etapa }}
+                    {% if form.pontos_fixos_etapa.errors %}
+                        <div class="alert alert-danger mt-2">{{ form.pontos_fixos_etapa.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <div class="form-check form-switch">
+                        {{ form.ativa }}
+                        <label class="form-check-label fw-bold" for="{{ form.ativa.id_for_label }}">
+                            Etapa Ativa
+                        </label>
+                    </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <div class="form-check form-switch">
+                        {{ form.se_gera_pontos }}
+                        <label class="form-check-label fw-bold" for="{{ form.se_gera_pontos.id_for_label }}">
+                            Gera Pontos
+                        </label>
+                    </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <div class="form-check form-switch">
+                        {{ form.se_possui_checklists }}
+                        <label class="form-check-label fw-bold" for="{{ form.se_possui_checklists.id_for_label }}">
+                            Possui Checklists
+                        </label>
+                    </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <div class="form-check form-switch">
+                        {{ form.se_possui_calculo_por_quantidade }}
+                        <label class="form-check-label fw-bold" for="{{ form.se_possui_calculo_por_quantidade.id_for_label }}">
+                            Cálculo por Qtd
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Salvar
+                </button>
+                <a href="{% url 'workflow:lista_etapas' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </a>
+                {% if etapa %}
+                <a href="{% url 'workflow:deletar_etapa' etapa.id %}" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Deletar
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Checklists - {{ etapa.nome }}{% endblock %}
+
+{% block sidebar %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 fw-bold"><i class="bi bi-check2-square text-primary"></i> Checklists - {{ etapa.nome }}</h1>
+        <p class="text-muted mb-0">Sequência: <strong>{{ etapa.sequencia }}</strong></p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'workflow:criar_checklist_etapa' etapa.id %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Novo Checklist
+        </a>
+        <a href="{% url 'workflow:lista_etapas' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Ordem</th>
+                        <th>Nome</th>
+                        <th>Descrição</th>
+                        <th>Pontos</th>
+                        <th>Obrigatório</th>
+                        <th>Ativo</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for checklist in checklists %}
+                    <tr>
+                        <td><span class="badge bg-secondary">{{ checklist.ordem }}</span></td>
+                        <td><strong>{{ checklist.nome }}</strong></td>
+                        <td>
+                            {% if checklist.descricao %}
+                                {{ checklist.descricao|truncatewords:15 }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-primary">{{ checklist.pontos_do_check }} pts</span></td>
+                        <td>
+                            {% if checklist.obrigatorio %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i></span>
+                            {% else %}
+                                <span class="badge bg-secondary"><i class="bi bi-x-circle"></i></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if checklist.ativo %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'workflow:editar_checklist' checklist.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Editar
+                            </a>
+                            <a href="{% url 'workflow:deletar_checklist' checklist.id %}" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i> Deletar
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">
+                            <i class="bi bi-inbox"></i> Nenhum checklist cadastrado para esta etapa
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if checklists %}
+<div class="alert alert-info mt-4">
+    <i class="bi bi-info-circle"></i>
+    <strong>Total:</strong> {{ checklists.count }} checklist{{ checklists.count|pluralize }}
+</div>
+{% endif %}
+{% endblock %}

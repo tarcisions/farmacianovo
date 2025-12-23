@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block sidebar %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold"><i class="bi bi-check2-square text-primary"></i> {{ titulo }}</h1>
+    <a href="{% url 'workflow:checklists_etapa' etapa.id %}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <label for="{{ form.nome.id_for_label }}" class="form-label fw-bold">Nome do Checklist *</label>
+                    {{ form.nome }}
+                    {% if form.nome.errors %}
+                        <div class="alert alert-danger mt-2">{{ form.nome.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="{{ form.ordem.id_for_label }}" class="form-label fw-bold">Ordem *</label>
+                    {{ form.ordem }}
+                    {% if form.ordem.errors %}
+                        <div class="alert alert-danger mt-2">{{ form.ordem.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.pontos_do_check.id_for_label }}" class="form-label fw-bold">Pontos do Check *</label>
+                    {{ form.pontos_do_check }}
+                    {% if form.pontos_do_check.errors %}
+                        <div class="alert alert-danger mt-2">{{ form.pontos_do_check.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.descricao.id_for_label }}" class="form-label fw-bold">Descrição</label>
+                {{ form.descricao }}
+                {% if form.descricao.errors %}
+                    <div class="alert alert-danger mt-2">{{ form.descricao.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="form-check form-switch">
+                        {{ form.obrigatorio }}
+                        <label class="form-check-label fw-bold" for="{{ form.obrigatorio.id_for_label }}">
+                            Checklist Obrigatório
+                        </label>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <div class="form-check form-switch">
+                        {{ form.ativo }}
+                        <label class="form-check-label fw-bold" for="{{ form.ativo.id_for_label }}">
+                            Checklist Ativo
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>Etapa:</strong> {{ etapa.nome }} (Sequência: {{ etapa.sequencia }})
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Salvar Checklist
+                </button>
+                <a href="{% url 'workflow:checklists_etapa' etapa.id %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </a>
+                {% if checklist %}
+                <a href="{% url 'workflow:deletar_checklist' checklist.id %}" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Deletar
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

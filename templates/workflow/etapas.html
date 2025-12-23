@@ -10,7 +10,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3 fw-bold"><i class="bi bi-diagram-3 text-primary"></i> Gestão de Etapas</h1>
-    <a href="/admin/core/etapa/add/" class="btn btn-primary">
+    <a href="{% url 'workflow:criar_etapa' %}" class="btn btn-primary">
         <i class="bi bi-plus-circle"></i> Nova Etapa
     </a>
 </div>
@@ -23,7 +23,6 @@
                     <tr>
                         <th>Sequência</th>
                         <th>Nome</th>
-                        <th>Grupo</th>
                         <th>Gera Pontos</th>
                         <th>Ativa</th>
                         <th>Ações</th>
@@ -34,7 +33,6 @@
                     <tr>
                         <td><span class="badge bg-primary">{{ etapa.sequencia }}</span></td>
                         <td><strong>{{ etapa.nome }}</strong></td>
-                        <td><span class="badge bg-info">{{ etapa.get_grupo_display }}</span></td>
                         <td>
                             {% if etapa.se_gera_pontos %}
                             <span class="badge bg-success"><i class="bi bi-check-circle"></i> Sim</span>
@@ -50,14 +48,17 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="/admin/core/etapa/{{ etapa.id }}/change/" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-pencil"></i>
+                            <a href="{% url 'workflow:editar_etapa' etapa.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Editar
+                            </a>
+                            <a href="{% url 'workflow:checklists_etapa' etapa.id %}" class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-check2-square"></i> Checklists
                             </a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted">Nenhuma etapa cadastrada</td>
+                        <td colspan="5" class="text-center text-muted">Nenhuma etapa cadastrada</td>
                     </tr>
                     {% endfor %}
                 </tbody>

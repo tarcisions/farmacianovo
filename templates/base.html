@@ -181,43 +181,47 @@
             <nav class="col-md-2 d-md-block sidebar p-3">
                 <div class="position-sticky">
                     {% block sidebar %}
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'dashboard:funcionario' %}">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'dashboard:meus_pedidos' %}">
-                                <i class="bi bi-list-task"></i> Meus Pedidos
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'dashboard:pedidos_disponiveis' %}">
-                                <i class="bi bi-play-circle"></i> Pedidos Disponíveis
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'dashboard:expedicao_motoboy' %}">
-                                <i class="bi bi-truck"></i> Rota Motoboy
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'dashboard:expedicao_sedex' %}">
-                                <i class="bi bi-box-seam"></i> Envio Sedex
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link{% if request.resolver_match.url_name == 'rotas_finalizadas' %} active{% endif %}" href="{% url 'dashboard:rotas_finalizadas' %}">
-                                <i class="bi bi-archive"></i> Rotas Finalizadas
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link{% if request.resolver_match.url_name == 'historico_etapas' %} active{% endif %}" href="{% url 'dashboard:historico_etapas' %}">
-                                <i class="bi bi-clock-history"></i> Histórico de Etapas
-                            </a>
-                        </li>
-                    </ul>
+                    {% if 'Gerente' in user.groups.all|dictsort:"name"|join:"," or user.is_superuser %}
+                        {% include "includes/sidebar_gerente_admin.html" %}
+                    {% else %}
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'dashboard:funcionario' %}">
+                                    <i class="bi bi-speedometer2"></i> Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'dashboard:meus_pedidos' %}">
+                                    <i class="bi bi-list-task"></i> Meus Pedidos
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'dashboard:pedidos_disponiveis' %}">
+                                    <i class="bi bi-play-circle"></i> Pedidos Disponíveis
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'dashboard:expedicao_motoboy' %}">
+                                    <i class="bi bi-truck"></i> Rota Motoboy
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'dashboard:expedicao_sedex' %}">
+                                    <i class="bi bi-box-seam"></i> Envio Sedex
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link{% if request.resolver_match.url_name == 'rotas_finalizadas' %} active{% endif %}" href="{% url 'dashboard:rotas_finalizadas' %}">
+                                    <i class="bi bi-archive"></i> Rotas Finalizadas
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link{% if request.resolver_match.url_name == 'historico_etapas' %} active{% endif %}" href="{% url 'dashboard:historico_etapas' %}">
+                                    <i class="bi bi-clock-history"></i> Histórico de Etapas
+                                </a>
+                            </li>
+                        </ul>
+                    {% endif %}
                     {% endblock %}
                 </div>
             </nav>
