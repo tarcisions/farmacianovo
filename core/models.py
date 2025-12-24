@@ -243,9 +243,10 @@ class Pedido(models.Model):
     codigo_pedido = models.CharField(max_length=50, unique=False, blank=True)  # Código gerado para referência (não único)
     
     # Campos da API externa - IDs separados em colunas
-    id_api = models.BigIntegerField(unique=True, db_index=True, null=True, blank=True)  # ID - ID único do item
-    id_pedido_api = models.BigIntegerField(null=True, blank=True, db_index=True)  # IDPEDIDO
-    id_pedido_web = models.BigIntegerField(null=True, blank=True, db_index=True)  # IDPEDIDOWEB
+    nrorc = models.BigIntegerField(unique=True, db_index=True, null=True, blank=True)  # NRORC - Número do RC (identificador único)
+    id_api = models.BigIntegerField(unique=True, db_index=True, null=True, blank=True)  # ID - ID único do item (removido do uso)
+    id_pedido_api = models.BigIntegerField(null=True, blank=True, db_index=True)  # IDPEDIDO (removido do uso)
+    id_pedido_web = models.BigIntegerField(null=True, blank=True, db_index=True)  # IDPEDIDOWEB (removido do uso)
     descricao_web = models.TextField(blank=True)  # DESCRICAOWEB
     price_unit = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)  # PRUNI
     price_total = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)  # VRTOT
@@ -455,6 +456,7 @@ class PontuacaoFuncionario(models.Model):
         ('penalizacao', 'Penalização'),
         ('expedicao', 'Expedição'),
         ('mensal', 'Bonificação Mensal'),
+        ('controle_qualidade', 'Controle de Qualidade'),
     ]
     
     funcionario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pontuacoes')
@@ -696,10 +698,47 @@ class LogAuditoria(models.Model):
         usuario_nome = self.usuario.username if self.usuario else 'Sistema'
         return f"{usuario_nome} - {self.get_acao_display()} - {self.timestamp}"
 
+class ConfiguracaoControleQualidade(models.Model):
+    """
+    Configuração geral do Controle de Qualidade
+    Define a pontuação que cada formulário preenchido dará ao funcionário
+    """
+    nome_configuracao = models.CharField(max_length=200, default='Padrão', unique=True)
+    pontos_por_formulario = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=5,
+        help_text="Pontuação atribuída cada vez que um formulário de CQ é preenchido"
+    )
+    ativa = models.BooleanField(default=True)
+    descricao = models.TextField(blank=True, help_text="Descrição da configuração")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Configuração de Controle de Qualidade'
+        verbose_name_plural = 'Configurações de Controle de Qualidade'
+    
+    def __str__(self):
+        return f"{self.nome_configuracao} - {self.pontos_por_formulario} pts"
+    
+    @classmethod
+    def get_configuracao_ativa(cls):
+        """Retorna a configuração ativa, ou cria uma padrão se não existir"""
+        config = cls.objects.filter(ativa=True).first()
+        if not config:
+            config, _ = cls.objects.get_or_create(
+                nome_configuracao='Padrão',
+                defaults={'pontos_por_formulario': 5, 'ativa': True}
+            )
+        return config
+
+
 class ControlePergunta(models.Model):
     """
     Define perguntas para o Controle de Qualidade
     Admin cria as perguntas e define o tipo de resposta esperada
+    Perguntas NÃO possuem pontuação individual - pontuação vem da ConfiguracaoControleQualidade
     """
     TIPO_CAMPO_CHOICES = [
         ('texto', 'Texto Simples'),
@@ -709,7 +748,6 @@ class ControlePergunta(models.Model):
         ('numero', 'Número'),
     ]
     
-    etapa = models.ForeignKey(Etapa, on_delete=models.CASCADE, related_name='perguntas_controle_qualidade')
     pergunta = models.CharField(max_length=500, help_text="Ex: Conferiu os produtos?")
     tipo_campo = models.CharField(max_length=20, choices=TIPO_CAMPO_CHOICES, default='texto')
     descricao = models.TextField(blank=True, help_text="Descrição adicional ou instruções")
@@ -723,10 +761,9 @@ class ControlePergunta(models.Model):
         ordering = ['ordem', 'id']
         verbose_name = 'Pergunta de Controle de Qualidade'
         verbose_name_plural = 'Perguntas de Controle de Qualidade'
-        unique_together = ['etapa', 'pergunta']
     
     def __str__(self):
-        return f"{self.etapa.nome} - {self.pergunta}"
+        return f"{self.pergunta}"
 
 
 class ControlePerguntaOpcao(models.Model):
@@ -750,21 +787,28 @@ class ControlePerguntaOpcao(models.Model):
 
 class HistoricoControleQualidade(models.Model):
     """
-    Histórico das respostas do Controle de Qualidade preenchido pelo funcionário
+    Formulário de Controle de Qualidade independente (não vinculado a pedidos)
+    Funciona como um formulário que o funcionário preenche quando necessário
     """
-    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='historico_controle_qualidade')
-    funcionario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='respostas_controle_qualidade')
-    historico_etapa = models.OneToOneField(HistoricoEtapa, on_delete=models.CASCADE, related_name='controle_qualidade', null=True, blank=True)
+    # Dados do Controle de Qualidade preenchidos pelo funcionário
+    id_controle = models.CharField(max_length=100, null=True, blank=True, help_text="ID ou referência do item (preenchido pelo funcionário)")
+    nome_item = models.CharField(max_length=200, null=True, blank=True, help_text="Nome do item/produto sendo inspecionado")
+    codigo_item = models.CharField(max_length=100, blank=True, help_text="Código do item (opcional)")
+    
+    # Dados do sistema
+    funcionario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='formularios_controle_qualidade')
+    pontuacao = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Pontuação obtida no formulário")
+    
     preenchido_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
     
     class Meta:
         ordering = ['-preenchido_em']
-        verbose_name = 'Histórico de Controle de Qualidade'
-        verbose_name_plural = 'Histórico de Controles de Qualidade'
+        verbose_name = 'Formulário de Controle de Qualidade'
+        verbose_name_plural = 'Formulários de Controle de Qualidade'
     
     def __str__(self):
-        return f"{self.pedido} - {self.funcionario.username} - {self.preenchido_em.strftime('%d/%m/%Y %H:%M')}"
+        return f"CQ: {self.id_controle} - {self.nome_item} - {self.funcionario.username}"
 
 
 class RespostaControleQualidade(models.Model):

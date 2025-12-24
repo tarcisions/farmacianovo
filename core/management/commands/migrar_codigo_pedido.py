@@ -3,20 +3,20 @@ from core.models import Pedido
 
 
 class Command(BaseCommand):
-    help = 'Atualiza código_pedido para o novo formato com IDs da API'
+    help = 'Atualiza código_pedido para o novo formato com NRORC'
     
     def handle(self, *args, **kwargs):
         self.stdout.write(self.style.WARNING('\n🔄 Atualizando formato de código_pedido...\n'))
         
-        pedidos = Pedido.objects.filter(id_api__isnull=False).order_by('-id_api')
+        pedidos = Pedido.objects.filter(nrorc__isnull=False).order_by('-nrorc')
         total = pedidos.count()
         atualizados = 0
         
         for pedido in pedidos:
-            novo_codigo = f"API-{pedido.id_api}-{pedido.id_pedido_api}-{pedido.id_pedido_web}"
+            novo_codigo = f"NRORC_{pedido.nrorc}"
             
             if pedido.codigo_pedido != novo_codigo:
-                self.stdout.write(f"ID {pedido.id_api}: {pedido.codigo_pedido} → {novo_codigo}")
+                self.stdout.write(f"ID {pedido.nrorc}: {pedido.codigo_pedido} → {novo_codigo}")
                 pedido.codigo_pedido = novo_codigo
                 pedido.save()
                 atualizados += 1

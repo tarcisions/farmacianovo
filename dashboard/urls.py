@@ -31,10 +31,10 @@ urlpatterns = [
     path('historico-etapas/', views.historico_etapas_funcionario, name='historico_etapas'),
     path('pedidos-concluidos/', views.pedidos_concluidos, name='pedidos_concluidos'),
     
-    # Controle de Qualidade
-    path('controle-qualidade/<int:pedido_id>/', views.controle_qualidade, name='controle_qualidade'),
-    path('historico-controle-qualidade/<int:pedido_id>/', views.historico_controle_qualidade, name='historico_controle_qualidade'),
-    path('controle-qualidade/', views.controle_qualidade_lista, name='controle_qualidade_lista'),
+    # Controle de Qualidade (sem vinculação com pedidos)
+    path('controle-qualidade/', views.controle_qualidade, name='controle_qualidade'),
+    path('controle-qualidade/novo/', views.controle_qualidade_formulario, name='controle_qualidade_novo'),
+    path('controle-qualidade/<int:formulario_id>/', views.controle_qualidade_detalhe, name='controle_qualidade_detalhe'),
     
     # Perfil e lista de funcionários
     path('perfil-funcionario/', views.perfil_funcionario, name='perfil_funcionario'),

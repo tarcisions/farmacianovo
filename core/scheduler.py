@@ -103,9 +103,7 @@ def processar_e_salvar_pedidos(dados_api):
     
     for item in dados_api.get('dados', []):
         try:
-            id_api = item.get('ID')
-            id_pedido = item.get('IDPEDIDO')
-            id_pedido_web = item.get('IDPEDIDOWEB')
+            id_api = item.get('NRORC')  # ID único vindo do NRORC
             descricao = item.get('DESCRICAOWEB', '')
             quantidade = item.get('QUANT', 0)
             pruni = item.get('PRUNI')
@@ -113,19 +111,25 @@ def processar_e_salvar_pedidos(dados_api):
             dtalt = item.get('DTALT')
             hralt = item.get('HRALT')
             
+            # Validar se ID existe
+            if not id_api:
+                logger.warning(f'Item sem NRORC: {item}')
+                erros += 1
+                continue
+            
             # Tentar extrair quantidade da descrição (cápsulas/envelopes)
             quantidade_extraida = extrair_quantidade_produto(descricao)
             if quantidade_extraida is not None:
                 quantidade = quantidade_extraida
             
             # Gerar código do pedido
-            codigo_pedido = f'API_{id_api}_{id_pedido_web}' if id_api else f'WEB_{id_pedido_web}'
+            codigo_pedido = f'NRORC_{id_api}'
             
             # Extrair tipo de produto
             tipo_produto, tipo_identificado = extrair_tipo_produto(descricao)
             
             # Verificar se já existe
-            pedido_existente = Pedido.objects.filter(id_api=id_api).first()
+            pedido_existente = Pedido.objects.filter(nrorc=id_api).first()
             
             if pedido_existente:
                 # Verificar se houve mudanças
@@ -179,12 +183,10 @@ def processar_e_salvar_pedidos(dados_api):
             else:
                 # Criar novo
                 Pedido.objects.create(
-                    id_api=id_api,
+                    nrorc=id_api,
                     codigo_pedido=codigo_pedido,
                     nome=descricao[:200] if descricao else f'Pedido {id_api}',
                     quantidade=quantidade,
-                    id_pedido_api=id_pedido,
-                    id_pedido_web=id_pedido_web,
                     descricao_web=descricao,
                     price_unit=Decimal(str(pruni)) if pruni else None,
                     price_total=Decimal(str(vrtot)) if vrtot else None,
@@ -201,7 +203,7 @@ def processar_e_salvar_pedidos(dados_api):
             logger.warning(f'Registro duplicado ID {id_api}: {str(e)[:80]}')
             erros += 1
         except Exception as e:
-            logger.error(f'Erro ao processar item ID {item.get("ID")}: {str(e)}')
+            logger.error(f'Erro ao processar item ID {id_api}: {str(e)}')
             erros += 1
     
     logger.info(f'[PROCESSAMENTO] Pedidos: {criados} criados, {atualizados} atualizados, {sem_mudancas} sem mudanças, {erros} erros')

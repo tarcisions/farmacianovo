@@ -44,7 +44,7 @@
         <form method="get" class="row g-3" id="filter-form">
             <div class="col-md-2">
                 <label class="form-label">ID API</label>
-                <input type="text" class="form-control" name="id_api" value="{{ id_api_filtro }}" placeholder="Ex: 12345">
+                <input type="text" class="form-control" name="nrorc" value="{{ nrorc_filtro }}" placeholder="Ex: 12345">
             </div>
             <div class="col-md-2">
                 <label class="form-label">IDPEDIDO</label>
@@ -135,7 +135,7 @@
                     {% for pedido in page_obj %}
                     <tr>
                         <td>
-                            <strong class="text-primary">{{ pedido.id_api|default:"N/A" }}</strong>
+                            <strong class="text-primary">{{ pedido.nrorc|default:"N/A" }}</strong>
                         </td>
                         <td>
                             <code class="text-muted">{{ pedido.id_pedido_api|default:"-" }}</code>

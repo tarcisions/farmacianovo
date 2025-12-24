@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalhes - {{ formulario.id_controle }}{% endblock %}
+
+{% block content %}
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <h1 class="h3 fw-bold"><i class="bi bi-clipboard-check text-primary"></i> Detalhes do Formulário</h1>
+    <a href="{% url 'dashboard:controle_qualidade' %}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard:funcionario' %}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'dashboard:controle_qualidade' %}">Controle de Qualidade</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ formulario.id_controle }}</li>
+    </ol>
+</nav>
+
+<!-- Informações do Formulário -->
+<div class="row g-4">
+    <div class="col-lg-12">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <strong><i class="bi bi-info-circle"></i> Informações do Formulário</strong>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <p class="text-muted mb-1"><small><strong>ID DO ITEM</strong></small></p>
+                        <p class="fs-5 fw-bold">{{ formulario.id_controle }}</p>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <p class="text-muted mb-1"><small><strong>NOME DO ITEM</strong></small></p>
+                        <p class="fs-5 fw-bold">{{ formulario.nome_item }}</p>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <p class="text-muted mb-1"><small><strong>CÓDIGO DO ITEM</strong></small></p>
+                        <p class="fs-5 fw-bold">
+                            {% if formulario.codigo_item %}
+                                {{ formulario.codigo_item }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <p class="text-muted mb-1"><small><strong>FUNCIONÁRIO</strong></small></p>
+                        <p class="fs-5 fw-bold">
+                            <i class="bi bi-person-circle"></i> {{ formulario.funcionario.get_full_name|default:formulario.funcionario.username }}
+                        </p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <p class="text-muted mb-1"><small><strong>DATA DE PREENCHIMENTO</strong></small></p>
+                        <p class="fs-5 fw-bold">
+                            <i class="bi bi-calendar"></i> {{ formulario.preenchido_em|date:"d/m/Y H:i" }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Respostas do Formulário -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <strong><i class="bi bi-list-check"></i> Respostas do Formulário</strong>
+            </div>
+            <div class="card-body">
+                {% if formulario.respostas.all %}
+                    {% for resposta in formulario.respostas.all %}
+                    <div class="mb-4 p-3 bg-light border-start border-4 border-primary rounded">
+                        <h6 class="fw-bold text-primary mb-3">
+                            {{ resposta.pergunta.pergunta }}
+                            {% if resposta.pergunta.obrigatorio %}
+                            <span class="text-danger">*</span>
+                            {% endif %}
+                        </h6>
+
+                        <div class="ms-3">
+                            {% if resposta.resposta_opcao %}
+                                <div class="mb-2">
+                                    <span class="badge bg-success p-2 fs-6">{{ resposta.resposta_opcao.texto_opcao }}</span>
+                                </div>
+                            {% endif %}
+
+                            {% if resposta.resposta_texto %}
+                                <p class="text-dark mb-0">
+                                    {{ resposta.resposta_texto }}
+                                </p>
+                            {% endif %}
+
+                            {% if not resposta.resposta_opcao and not resposta.resposta_texto %}
+                                <p class="text-muted fst-italic">Sem resposta</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox display-4 text-muted opacity-50"></i>
+                        <p class="text-muted mt-3">
+                            <small><em>Nenhuma resposta registrada para este formulário</em></small>
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-start {
+        border-left: 4px solid !important;
+    }
+</style>
+
+{% endblock %}

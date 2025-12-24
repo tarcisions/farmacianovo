@@ -28,22 +28,6 @@ def detalhe_rota_finalizada(request, historico_id):
         'is_gestor': is_gestor,
     }
     return render(request, 'dashboard/detalhe_rota_finalizada.html', context)
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.contrib import messages
-from django.utils import timezone
-from django.db.models import Sum, Count, Q
-from django.http import JsonResponse, HttpResponse
-from decimal import Decimal
-from datetime import datetime, timedelta
-import csv
-from core.models import (
-    Pedido, Etapa, PontuacaoFuncionario, HistoricoEtapa,
-    BonusFaixa, HistoricoBonusMensal, LogAuditoria, Checklist,
-    ChecklistExecucao, ConfiguracaoPontuacao, RegraProducao,
-    ConfiguracaoExpedicao, TipoProduto
-)
 
 def index(request):
     if request.user.is_authenticated:
@@ -1121,19 +1105,47 @@ def rotas_finalizadas_gerente(request):
     if not request.user.groups.filter(name__in=['Gerente', 'Superadmin']).exists() and not request.user.is_superuser:
         return redirect('dashboard:rotas_finalizadas')
     etapa_expedicao = Etapa.objects.get(nome='Expedição')
-    funcionario_id = request.GET.get('funcionario')
+    funcionario_nome = request.GET.get('funcionario', '').strip()
     rotas_finalizadas = HistoricoEtapa.objects.filter(
         etapa=etapa_expedicao,
         timestamp_fim__isnull=False
     )
-    if funcionario_id:
-        rotas_finalizadas = rotas_finalizadas.filter(funcionario_id=funcionario_id)
+    if funcionario_nome:
+        # Filtrar por nome do funcionário - dividir em partes como em controle_qualidade
+        partes_nome = funcionario_nome.split()
+        from django.db.models import Q
+        query = Q()
+        for parte in partes_nome:
+            query |= (
+                Q(funcionario__first_name__icontains=parte) | 
+                Q(funcionario__last_name__icontains=parte) |
+                Q(funcionario__username__icontains=parte)
+            )
+        rotas_finalizadas = rotas_finalizadas.filter(query)
     rotas_finalizadas = rotas_finalizadas.select_related('pedido', 'pedido__tipo', 'funcionario').order_by('-timestamp_fim')
-    funcionarios = User.objects.filter(groups__name='Funcionário')
+    
+    # Obter lista de funcionários para autocomplete
+    funcionarios_lista = HistoricoEtapa.objects.filter(
+        etapa=etapa_expedicao,
+        timestamp_fim__isnull=False
+    ).values_list(
+        'funcionario__first_name', 'funcionario__last_name', 'funcionario__username'
+    ).distinct().order_by('funcionario__first_name')
+    
+    funcionarios_json = []
+    for first_name, last_name, username in funcionarios_lista:
+        nome_completo = f"{first_name} {last_name}".strip()
+        if not nome_completo:
+            nome_completo = username
+        funcionarios_json.append({'nome': nome_completo})
+    
+    import json
+    funcionarios_json = json.dumps(funcionarios_json)
+    
     context = {
         'rotas_finalizadas': rotas_finalizadas,
-        'funcionarios': funcionarios,
-        'filtro_funcionario': funcionario_id,
+        'filtro_funcionario': funcionario_nome,
+        'funcionarios_json': funcionarios_json,
         'is_gestor': True,
     }
     return render(request, 'dashboard/rotas_finalizadas.html', context)
@@ -1195,6 +1207,9 @@ def historico_etapas_funcionario(request):
 @login_required
 def pedidos_concluidos(request):
     """Tela de pedidos concluídos do sistema (visível para gerente/admin e funcionários)"""
+    from django.db.models import Q
+    from django.core.paginator import Paginator
+    
     # Pedidos com status concluído
     pedidos_concluidos = Pedido.objects.filter(
         status='concluido'
@@ -1206,15 +1221,68 @@ def pedidos_concluidos(request):
             historico_etapas__funcionario=request.user
         ).distinct()
     
+    # Processar filtros
+    filtros = {
+        'nrorc': '',
+        'nome': '',
+        'tipo': '',
+        'data_inicio': '',
+        'data_fim': '',
+    }
+    
+    # Filtro por NRORC
+    nrorc_filtro = request.GET.get('nrorc', '').strip()
+    if nrorc_filtro:
+        pedidos_concluidos = pedidos_concluidos.filter(nrorc__icontains=nrorc_filtro)
+        filtros['nrorc'] = nrorc_filtro
+    
+    # Filtro por nome
+    nome_filtro = request.GET.get('nome', '').strip()
+    if nome_filtro:
+        pedidos_concluidos = pedidos_concluidos.filter(nome__icontains=nome_filtro)
+        filtros['nome'] = nome_filtro
+    
+    # Filtro por tipo
+    tipo_filtro = request.GET.get('tipo', '').strip()
+    if tipo_filtro:
+        pedidos_concluidos = pedidos_concluidos.filter(tipo__tipo__icontains=tipo_filtro)
+        filtros['tipo'] = tipo_filtro
+    
+    # Filtro por data início
+    data_inicio_filtro = request.GET.get('data_inicio', '').strip()
+    if data_inicio_filtro:
+        from datetime import datetime as dt
+        try:
+            data_inicio = dt.strptime(data_inicio_filtro, '%Y-%m-%d').date()
+            pedidos_concluidos = pedidos_concluidos.filter(concluido_em__date__gte=data_inicio)
+            filtros['data_inicio'] = data_inicio_filtro
+        except:
+            pass
+    
+    # Filtro por data fim
+    data_fim_filtro = request.GET.get('data_fim', '').strip()
+    if data_fim_filtro:
+        from datetime import datetime as dt
+        try:
+            data_fim = dt.strptime(data_fim_filtro, '%Y-%m-%d').date()
+            pedidos_concluidos = pedidos_concluidos.filter(concluido_em__date__lte=data_fim)
+            filtros['data_fim'] = data_fim_filtro
+        except:
+            pass
+    
     # Paginação
-    from django.core.paginator import Paginator
     paginator = Paginator(pedidos_concluidos, 50)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
     
+    # Obter lista de tipos para dropdown
+    tipos_disponiveis = TipoProduto.objects.filter(ativo=True).order_by('tipo')
+    
     context = {
         'page_obj': page_obj,
         'pedidos_concluidos': page_obj,
+        'filtros': filtros,
+        'tipos_disponiveis': tipos_disponiveis,
     }
     
     return render(request, 'dashboard/pedidos_concluidos.html', context)
@@ -1442,9 +1510,7 @@ def lista_pedidos(request):
     
     # Filtros
     nome_filtro = request.GET.get('nome', '')
-    id_api_filtro = request.GET.get('id_api', '')
-    id_pedido_api_filtro = request.GET.get('id_pedido_api', '')
-    id_pedido_web_filtro = request.GET.get('id_pedido_web', '')
+    nrorc_filtro = request.GET.get('nrorc', '')
     status_filtro = request.GET.get('status', '')
     etapa_filtro = request.GET.get('etapa', '')
     funcionario_filtro = request.GET.get('funcionario', '')
@@ -1466,12 +1532,8 @@ def lista_pedidos(request):
     # Aplicar filtros
     if nome_filtro:
         pedidos = pedidos.filter(nome__icontains=nome_filtro)
-    if id_api_filtro:
-        pedidos = pedidos.filter(id_api__icontains=id_api_filtro)
-    if id_pedido_api_filtro:
-        pedidos = pedidos.filter(id_pedido_api__icontains=id_pedido_api_filtro)
-    if id_pedido_web_filtro:
-        pedidos = pedidos.filter(id_pedido_web__icontains=id_pedido_web_filtro)
+    if nrorc_filtro:
+        pedidos = pedidos.filter(nrorc__icontains=nrorc_filtro)
     if status_filtro:
         pedidos = pedidos.filter(status=status_filtro)
     if etapa_filtro:
@@ -1496,9 +1558,7 @@ def lista_pedidos(request):
         'todas_etapas': todas_etapas,
         'todos_funcionarios': todos_funcionarios,
         'nome_filtro': nome_filtro,
-        'id_api_filtro': id_api_filtro,
-        'id_pedido_api_filtro': id_pedido_api_filtro,
-        'id_pedido_web_filtro': id_pedido_web_filtro,
+        'nrorc_filtro': nrorc_filtro,
         'status_filtro': status_filtro,
         'etapa_filtro': etapa_filtro,
         'funcionario_filtro': funcionario_filtro,
@@ -1910,190 +1970,116 @@ def auditoria(request):
 from core.models import ControlePergunta, HistoricoControleQualidade, RespostaControleQualidade
 
 @login_required
-def controle_qualidade(request, pedido_id):
+@login_required
+def controle_qualidade(request):
     """
-    Tela para funcionário preencher o Controle de Qualidade
+    Listagem de Controle de Qualidade
+    - Funcionários veem apenas seus próprios formulários
+    - Gerentes/Admins veem todos os formulários de todos os funcionários
     """
-    pedido = get_object_or_404(Pedido, id=pedido_id)
+    is_gerente = request.user.groups.filter(name__in=['Gerente', 'Superadmin']).exists() or request.user.is_superuser
     
-    # Verificar se o funcionário é responsável pelo pedido
-    if pedido.funcionario_na_etapa != request.user:
-        messages.error(request, 'Você não está responsável por este pedido')
-        return redirect('dashboard:funcionario')
+    # Determinar quais formulários mostrar
+    if is_gerente:
+        formularios = HistoricoControleQualidade.objects.select_related(
+            'funcionario'
+        ).prefetch_related(
+            'respostas',
+            'respostas__pergunta'
+        ).order_by('-preenchido_em')
+    else:
+        # Funcionário vê apenas seus formulários
+        formularios = HistoricoControleQualidade.objects.filter(
+            funcionario=request.user
+        ).select_related(
+            'funcionario'
+        ).prefetch_related(
+            'respostas',
+            'respostas__pergunta'
+        ).order_by('-preenchido_em')
     
-    # Verificar se a etapa atual é Controle de Qualidade
-    if not pedido.etapa_atual or pedido.etapa_atual.nome.lower() != 'controle de qualidade':
-        messages.error(request, 'Este pedido não está na etapa de Controle de Qualidade')
-        return redirect('dashboard:funcionario')
+    # Processar filtros
+    filtros = {
+        'nome': '',
+        'funcionario': '',
+        'data_inicio': '',
+        'data_fim': '',
+    }
     
-    # Obter o histórico de etapa (se existir) para relacionar as respostas
-    historico_etapa = HistoricoEtapa.objects.filter(
-        pedido=pedido,
-        etapa=pedido.etapa_atual,
-        timestamp_fim__isnull=True
-    ).first()
-    
-    # Obter todas as perguntas da etapa ordenadas
-    perguntas = ControlePergunta.objects.filter(
-        etapa=pedido.etapa_atual,
-        ativo=True
-    ).prefetch_related('opcoes').order_by('ordem', 'id')
-    
-    if request.method == 'POST':
-        # Criar ou atualizar HistoricoControleQualidade
-        historico_controle, created = HistoricoControleQualidade.objects.get_or_create(
-            pedido=pedido,
-            funcionario=request.user,
-            historico_etapa=historico_etapa
+    # Filtro por nome ou código
+    nome_filtro = request.GET.get('nome', '').strip()
+    if nome_filtro:
+        formularios = formularios.filter(
+            Q(nome_item__icontains=nome_filtro) | Q(codigo_item__icontains=nome_filtro)
         )
+        filtros['nome'] = nome_filtro
+    
+    # Filtro por funcionário (busca por nome)
+    funcionario_filtro = request.GET.get('funcionario', '').strip()
+    if funcionario_filtro:
+        # Dividir o nome em partes para buscar melhor
+        partes_nome = funcionario_filtro.split()
         
-        # Processar cada pergunta
-        for pergunta in perguntas:
-            resposta_texto = request.POST.get(f'resposta_{pergunta.id}', '').strip()
-            resposta_opcao_id = request.POST.get(f'opcao_{pergunta.id}')
-            
-            # Validar perguntas obrigatórias
-            if pergunta.obrigatorio and not resposta_texto and not resposta_opcao_id:
-                messages.error(request, f'A pergunta "{pergunta.pergunta}" é obrigatória')
-                # Redirecionar de volta ao formulário
-                context = {
-                    'pedido': pedido,
-                    'perguntas': perguntas,
-                    'historico_etapa': historico_etapa,
-                }
-                return render(request, 'dashboard/controle_qualidade.html', context)
-            
-            # Salvar resposta
-            resposta, _ = RespostaControleQualidade.objects.update_or_create(
-                historico_controle=historico_controle,
-                pergunta=pergunta,
-                defaults={
-                    'resposta_texto': resposta_texto,
-                    'resposta_opcao_id': resposta_opcao_id if resposta_opcao_id else None,
-                }
+        query = Q()
+        for parte in partes_nome:
+            query |= (
+                Q(funcionario__first_name__icontains=parte) | 
+                Q(funcionario__last_name__icontains=parte) |
+                Q(funcionario__username__icontains=parte)
             )
         
-        messages.success(request, 'Controle de Qualidade concluído com sucesso!')
-        
-        # Avançar para a próxima etapa
-        pedido.avancar_etapa()
-        
-        LogAuditoria.objects.create(
-            usuario=request.user,
-            acao='concluir_etapa',
-            descricao=f'Preencheu Controle de Qualidade para pedido {pedido.codigo_pedido}',
-            ip_address=request.META.get('REMOTE_ADDR')
-        )
-        
-        return redirect('dashboard:funcionario')
+        formularios = formularios.filter(query)
+        filtros['funcionario'] = funcionario_filtro
     
-    # Pré-carregar respostas já salvas (se existirem)
-    respostas_salvas = []
-    if historico_etapa:
-        historico_controle = HistoricoControleQualidade.objects.filter(
-            pedido=pedido,
-            funcionario=request.user,
-            historico_etapa=historico_etapa
-        ).first()
-        
-        if historico_controle:
-            respostas_salvas = RespostaControleQualidade.objects.filter(
-                historico_controle=historico_controle
-            ).select_related('resposta_opcao')
+    # Filtro por intervalo de data
+    data_inicio_filtro = request.GET.get('data_inicio', '').strip()
+    data_fim_filtro = request.GET.get('data_fim', '').strip()
     
-    context = {
-        'pedido': pedido,
-        'perguntas': perguntas,
-        'respostas_salvas': respostas_salvas,
-        'historico_etapa': historico_etapa,
-    }
+    if data_inicio_filtro:
+        from datetime import datetime as dt
+        try:
+            data_inicio = dt.strptime(data_inicio_filtro, '%Y-%m-%d').date()
+            formularios = formularios.filter(preenchido_em__date__gte=data_inicio)
+            filtros['data_inicio'] = data_inicio_filtro
+        except:
+            pass
     
-    return render(request, 'dashboard/controle_qualidade.html', context)
-
-
-@login_required
-def historico_controle_qualidade(request, pedido_id):
-    """
-    Tela para gerente visualizar as respostas do Controle de Qualidade
-    """
-    # Verificar se é gerente
-    if not (request.user.groups.filter(name__in=['Gerente', 'Superadmin']).exists() or request.user.is_superuser):
-        messages.error(request, 'Acesso restrito a gerentes')
-        return redirect('dashboard:home')
-    
-    pedido = get_object_or_404(Pedido, id=pedido_id)
-    
-    # Obter todos os registros de Controle de Qualidade para este pedido
-    historicos = HistoricoControleQualidade.objects.filter(
-        pedido=pedido
-    ).select_related('funcionario', 'historico_etapa').prefetch_related(
-        'respostas',
-        'respostas__pergunta',
-        'respostas__resposta_opcao'
-    ).order_by('-preenchido_em')
-    
-    # Organizar respostas por histórico
-    historicos_com_respostas = []
-    for historico in historicos:
-        respostas = historico.respostas.all().order_by('pergunta__ordem', 'pergunta__id')
-        historicos_com_respostas.append({
-            'historico': historico,
-            'respostas': respostas,
-        })
-    
-    context = {
-        'pedido': pedido,
-        'historicos_com_respostas': historicos_com_respostas,
-    }
-    
-    LogAuditoria.objects.create(
-        usuario=request.user,
-        acao='outros',
-        descricao=f'Visualizou Controle de Qualidade do pedido {pedido.codigo_pedido}',
-        ip_address=request.META.get('REMOTE_ADDR')
-    )
-    
-    return render(request, 'dashboard/historico_controle_qualidade.html', context)
-
-
-@login_required
-def controle_qualidade_lista(request):
-    """
-    Lista todos os pedidos com histórico de Controle de Qualidade para o gerente
-    """
-    # Verificar se é gerente
-    if not (request.user.groups.filter(name__in=['Gerente', 'Superadmin']).exists() or request.user.is_superuser):
-        messages.error(request, 'Acesso restrito a gerentes')
-        return redirect('dashboard:home')
-    
-    # Obter todos os pedidos que têm histórico de Controle de Qualidade
-    # Ordenar por pedido_id DESC para pegar o mais recente, depois filtrar duplicatas em Python
-    historicos_raw = HistoricoControleQualidade.objects.select_related(
-        'pedido',
-        'funcionario'
-    ).prefetch_related(
-        'pedido__etapa_atual',
-        'respostas',
-        'respostas__pergunta'
-    ).order_by('-preenchido_em')
-    
-    # Filtrar para pegar apenas o registro mais recente de cada pedido
-    seen_pedidos = set()
-    historicos_list = []
-    for historico in historicos_raw:
-        if historico.pedido_id not in seen_pedidos:
-            historicos_list.append(historico)
-            seen_pedidos.add(historico.pedido_id)
+    if data_fim_filtro:
+        from datetime import datetime as dt
+        try:
+            data_fim = dt.strptime(data_fim_filtro, '%Y-%m-%d').date()
+            formularios = formularios.filter(preenchido_em__date__lte=data_fim)
+            filtros['data_fim'] = data_fim_filtro
+        except:
+            pass
     
     # Paginação
     from django.core.paginator import Paginator
-    paginator = Paginator(historicos_list, 20)
+    paginator = Paginator(formularios, 20)
     page_number = request.GET.get('page', 1)
-    historicos_page = paginator.get_page(page_number)
+    formularios_page = paginator.get_page(page_number)
+    
+    # Obter lista de funcionários para autocomplete
+    funcionarios_lista = HistoricoControleQualidade.objects.values_list(
+        'funcionario__first_name', 'funcionario__last_name', 'funcionario__username'
+    ).distinct().order_by('funcionario__first_name')
+    
+    funcionarios_json = []
+    for first_name, last_name, username in funcionarios_lista:
+        nome_completo = f"{first_name} {last_name}".strip()
+        if not nome_completo:
+            nome_completo = username
+        funcionarios_json.append({'nome': nome_completo})
+    
+    import json
+    funcionarios_json = json.dumps(funcionarios_json)
     
     context = {
-        'historicos': historicos_page,
-        'total_pedidos': len(historicos_list),
+        'formularios': formularios_page,
+        'total_formularios': formularios.count(),
+        'is_gerente': is_gerente,
+        'filtros': filtros,
+        'funcionarios_json': funcionarios_json,
     }
     
     LogAuditoria.objects.create(
@@ -2103,4 +2089,139 @@ def controle_qualidade_lista(request):
         ip_address=request.META.get('REMOTE_ADDR')
     )
     
-    return render(request, 'dashboard/controle_qualidade_lista.html', context)
+    return render(request, 'dashboard/controle_qualidade.html', context)
+
+
+@login_required
+def controle_qualidade_detalhe(request, formulario_id):
+    """
+    Exibe os detalhes completos de um formulário de Controle de Qualidade
+    """
+    formulario = get_object_or_404(
+        HistoricoControleQualidade.objects.prefetch_related(
+            'respostas',
+            'respostas__pergunta'
+        ),
+        id=formulario_id
+    )
+    
+    # Verificar permissão: apenas o próprio funcionário ou gerente/admin pode ver
+    is_gerente = request.user.groups.filter(name__in=['Gerente', 'Superadmin']).exists() or request.user.is_superuser
+    if not (request.user == formulario.funcionario or is_gerente):
+        messages.error(request, 'Acesso negado')
+        return redirect('dashboard:controle_qualidade')
+    
+    context = {
+        'formulario': formulario,
+    }
+    
+    return render(request, 'dashboard/controle_qualidade_detalhe.html', context)
+
+
+@login_required
+def controle_qualidade_formulario(request):
+    """
+    Formulário para preencher Controle de Qualidade (novo ou edição)
+    Acessível para funcionários, gerentes e admins
+    """
+    # Obter todas as perguntas ativas ordenadas
+    perguntas = ControlePergunta.objects.filter(
+        ativo=True
+    ).prefetch_related('opcoes').order_by('ordem', 'id')
+    
+    formulario = None
+    respostas_salvas = []
+    
+    if request.method == 'POST':
+        # Capturar dados do formulário
+        nome_item = request.POST.get('nome_item', '').strip()
+        codigo_item = request.POST.get('codigo_item', '').strip()
+        
+        # Validar campos obrigatórios
+        if not nome_item:
+            messages.error(request, 'Nome do item é obrigatório')
+            context = {
+                'perguntas': perguntas,
+                'formulario': {'nome_item': nome_item, 'codigo_item': codigo_item},
+                'respostas_salvas': respostas_salvas,
+            }
+            return render(request, 'dashboard/controle_qualidade_formulario.html', context)
+        
+        # Criar novo HistoricoControleQualidade com id_controle vazio
+        formulario = HistoricoControleQualidade.objects.create(
+            nome_item=nome_item,
+            codigo_item=codigo_item,
+            funcionario=request.user
+        )
+        
+        # Atualizar id_controle com o ID do Django
+        formulario.id_controle = str(formulario.id)
+        formulario.save()
+        
+        # Processar cada pergunta
+        for pergunta in perguntas:
+            resposta_texto = request.POST.get(f'resposta_{pergunta.id}', '').strip()
+            resposta_opcao_id = request.POST.get(f'opcao_{pergunta.id}')
+            
+            # Validar perguntas obrigatórias
+            if pergunta.obrigatorio and not resposta_texto and not resposta_opcao_id:
+                messages.error(request, f'A pergunta "{pergunta.pergunta}" é obrigatória')
+                formulario.delete()
+                context = {
+                    'perguntas': perguntas,
+                    'formulario': {'nome_item': nome_item, 'codigo_item': codigo_item},
+                    'respostas_salvas': respostas_salvas,
+                }
+                return render(request, 'dashboard/controle_qualidade_formulario.html', context)
+            
+            # Salvar resposta
+            resposta, _ = RespostaControleQualidade.objects.update_or_create(
+                historico_controle=formulario,
+                pergunta=pergunta,
+                defaults={
+                    'resposta_texto': resposta_texto,
+                    'resposta_opcao_id': resposta_opcao_id if resposta_opcao_id else None,
+                }
+            )
+        
+        # Obter configuração de pontuação do Controle de Qualidade
+        from core.models import ConfiguracaoControleQualidade, PontuacaoFuncionario
+        config = ConfiguracaoControleQualidade.get_configuracao_ativa()
+        
+        # Salvar pontuação total (baseada na configuração, não nas perguntas)
+        formulario.pontuacao = config.pontos_por_formulario
+        formulario.save()
+        
+        # Contabilizar pontos para o funcionário baseado na configuração
+        from core.models import ConfiguracaoControleQualidade, PontuacaoFuncionario
+        config = ConfiguracaoControleQualidade.get_configuracao_ativa()
+        
+        PontuacaoFuncionario.objects.create(
+            funcionario=request.user,
+            pedido=None,
+            etapa=None,
+            pontos=config.pontos_por_formulario,
+            origem='controle_qualidade',  # Nova origem
+            mes_referencia=timezone.now().date(),
+            observacao=f'Formulário CQ: {nome_item} (ID: {formulario.id_controle})'
+        )
+        
+        messages.success(request, f'Formulário de Controle de Qualidade para "{nome_item}" salvo com sucesso!')
+        
+        LogAuditoria.objects.create(
+            usuario=request.user,
+            acao='outros',
+            descricao=f'Preencheu Controle de Qualidade: ID {formulario.id_controle} - {nome_item} (+{config.pontos_por_formulario} pts)',
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        # Redirecionar para a listagem
+        return redirect('dashboard:controle_qualidade')
+    
+    context = {
+        'perguntas': perguntas,
+        'formulario': formulario,
+        'respostas_salvas': respostas_salvas,
+    }
+    
+    return render(request, 'dashboard/controle_qualidade_formulario.html', context)

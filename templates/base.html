@@ -196,22 +196,27 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'dashboard:pedidos_disponiveis' %}">
+                                <a class="nav-link{% if request.resolver_match.url_name == 'controle_qualidade' %} active{% endif %}" href="{% url 'dashboard:controle_qualidade' %}">
+                                    <i class="bi bi-clipboard-check"></i> Controle de Qualidade
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link{% if request.resolver_match.url_name == 'pedidos_disponiveis' %} active{% endif %}" href="{% url 'dashboard:pedidos_disponiveis' %}">
                                     <i class="bi bi-play-circle"></i> Pedidos Disponíveis
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'dashboard:expedicao_motoboy' %}">
+                                <a class="nav-link{% if request.resolver_match.url_name == 'expedicao_motoboy' %} active{% endif %}" href="{% url 'dashboard:expedicao_motoboy' %}">
                                     <i class="bi bi-truck"></i> Rota Motoboy
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'dashboard:expedicao_sedex' %}">
+                                <a class="nav-link{% if request.resolver_match.url_name == 'expedicao_sedex' %} active{% endif %}" href="{% url 'dashboard:expedicao_sedex' %}">
                                     <i class="bi bi-box-seam"></i> Envio Sedex
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link{% if request.resolver_match.url_name == 'rotas_finalizadas' %} active{% endif %}" href="{% url 'dashboard:rotas_finalizadas' %}">
+                                <a class="nav-link{% if request.resolver_match.url_name == 'rotas_finalizadas' or request.resolver_match.url_name == 'detalhe_rota_finalizada' %} active{% endif %}" href="{% url 'dashboard:rotas_finalizadas' %}">
                                     <i class="bi bi-archive"></i> Rotas Finalizadas
                                 </a>
                             </li>
@@ -220,7 +225,6 @@
                                     <i class="bi bi-clock-history"></i> Histórico de Etapas
                                 </a>
                             </li>
-                        </ul>
                     {% endif %}
                     {% endblock %}
                 </div>

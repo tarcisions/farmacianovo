@@ -40,7 +40,7 @@
                             {% for item in resumo_etapas %}
                             <tr>
                                 <td>
-                                    <strong>{{ item.pedido.id_api }}</strong>
+                                    <strong>{{ item.pedido.nrorc }}</strong>
                                 </td>
                                 <td>{{ item.pedido.nome|truncatewords:10 }}</td>
                                 <td>
@@ -141,7 +141,7 @@
                                     <span class="badge bg-info">{{ historico.etapa.nome }}</span>
                                 </td>
                                 <td class="text-mono">
-                                    <strong>{{ historico.pedido.id_api }}</strong>
+                                    <strong>{{ historico.pedido.nrorc }}</strong>
                                 </td>
                                 <td>
                                     <span class="text-decoration-none">

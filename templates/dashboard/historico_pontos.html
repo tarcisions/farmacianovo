@@ -28,7 +28,7 @@
                     <tr>
                         <td><small>{{ ponto.timestamp|date:"d/m/Y H:i" }}</small></td>
                         <td><span class="badge bg-secondary">{{ ponto.get_origem_display }}</span></td>
-                        <td>{% if ponto.pedido %}<code class="text-primary">{{ ponto.pedido.id_api }}</code>{% else %}-{% endif %}</td>
+                        <td>{% if ponto.pedido %}<code class="text-primary">{{ ponto.pedido.nrorc }}</code>{% else %}-{% endif %}</td>
                         <td>{% if ponto.etapa %}<small>{{ ponto.etapa.nome }}</small>{% else %}-{% endif %}</td>
                         <td>
                             <span class="badge {% if ponto.pontos >= 0 %}bg-success{% else %}bg-danger{% endif %}">

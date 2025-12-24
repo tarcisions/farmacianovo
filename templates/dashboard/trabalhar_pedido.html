@@ -42,7 +42,7 @@
 
 {% block content %}
 <div class="mb-4">
-    <h1 class="h3 fw-bold"><i class="bi bi-gear text-primary"></i> Pedido ID: <code>{{ pedido.id_api }}</code> - {{ pedido.etapa_atual.nome }}</h1>
+    <h1 class="h3 fw-bold"><i class="bi bi-gear text-primary"></i> Pedido ID: <code>{{ pedido.nrorc }}</code> - {{ pedido.etapa_atual.nome }}</h1>
 </div>
 
 <!-- Status Fila Badge -->
@@ -61,7 +61,7 @@
                 <strong>Informações do Pedido</strong>
             </div>
             <div class="card-body">
-                <p><strong>ID API:</strong> <code class="text-primary">{{ pedido.id_api }}</code></p>
+                <p><strong>ID API:</strong> <code class="text-primary">{{ pedido.nrorc }}</code></p>
                 <p><strong>IDPEDIDO:</strong> <code class="text-muted">{{ pedido.id_pedido_api|default:"-" }}</code></p>
                 <p><strong>IDPEDIDOWEB:</strong> <code class="text-muted">{{ pedido.id_pedido_web|default:"-" }}</code></p>
                 <p><strong>Nome:</strong> <small style="word-wrap: break-word; white-space: normal;">{{ pedido.nome }}</small></p>

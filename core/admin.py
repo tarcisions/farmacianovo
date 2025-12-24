@@ -8,7 +8,8 @@ from .models import (
     BonusFaixa, HistoricoBonusMensal,
     ConfiguracaoExpedicao, RegistroExpedicao,
     LogAuditoria,
-    ControlePergunta, ControlePerguntaOpcao, HistoricoControleQualidade, RespostaControleQualidade
+    ControlePergunta, ControlePerguntaOpcao, HistoricoControleQualidade, RespostaControleQualidade,
+    ConfiguracaoControleQualidade
 )
 
 @admin.register(Etapa)
@@ -165,16 +166,37 @@ class ControlePerguntaOpcaoInline(admin.TabularInline):
     ordering = ['ordem']
 
 
+@admin.register(ConfiguracaoControleQualidade)
+class ConfiguracaoControleQualidadeAdmin(admin.ModelAdmin):
+    list_display = ['nome_configuracao', 'pontos_por_formulario', 'ativa', 'criado_em']
+    list_filter = ['ativa']
+    search_fields = ['nome_configuracao']
+    readonly_fields = ['criado_em', 'atualizado_em']
+    fieldsets = (
+        ('Configuração', {
+            'fields': ('nome_configuracao', 'pontos_por_formulario', 'ativa')
+        }),
+        ('Descrição', {
+            'fields': ('descricao',),
+            'classes': ('collapse',)
+        }),
+        ('Datas', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
 @admin.register(ControlePergunta)
 class ControlePerguntaAdmin(admin.ModelAdmin):
-    list_display = ['pergunta', 'etapa', 'tipo_campo', 'ativo', 'obrigatorio', 'ordem']
-    list_filter = ['etapa', 'tipo_campo', 'ativo', 'obrigatorio']
+    list_display = ['pergunta', 'tipo_campo', 'ativo', 'obrigatorio', 'ordem']
+    list_filter = ['tipo_campo', 'ativo', 'obrigatorio']
     search_fields = ['pergunta', 'descricao']
-    ordering = ['etapa', 'ordem']
+    ordering = ['ordem']
     inlines = [ControlePerguntaOpcaoInline]
     fieldsets = (
         ('Pergunta', {
-            'fields': ('etapa', 'pergunta', 'tipo_campo', 'ordem')
+            'fields': ('pergunta', 'tipo_campo', 'ordem')
         }),
         ('Configuração', {
             'fields': ('descricao', 'obrigatorio', 'ativo')
@@ -185,7 +207,7 @@ class ControlePerguntaAdmin(admin.ModelAdmin):
 @admin.register(ControlePerguntaOpcao)
 class ControlePerguntaOpcaoAdmin(admin.ModelAdmin):
     list_display = ['texto_opcao', 'pergunta', 'ordem']
-    list_filter = ['pergunta__etapa', 'pergunta']
+    list_filter = ['pergunta']
     search_fields = ['texto_opcao', 'pergunta__pergunta']
     ordering = ['pergunta', 'ordem']
 
@@ -200,13 +222,22 @@ class RespostaControleQualidadeInline(admin.TabularInline):
 
 @admin.register(HistoricoControleQualidade)
 class HistoricoControleQualidadeAdmin(admin.ModelAdmin):
-    list_display = ['pedido', 'funcionario', 'preenchido_em', 'atualizado_em']
+    list_display = ['id_controle', 'nome_item', 'funcionario', 'pontuacao', 'preenchido_em']
     list_filter = ['funcionario', 'preenchido_em']
-    search_fields = ['pedido__nome', 'funcionario__username', 'pedido__codigo_pedido']
+    search_fields = ['id_controle', 'nome_item', 'codigo_item', 'funcionario__username']
     date_hierarchy = 'preenchido_em'
-    readonly_fields = ['pedido', 'funcionario', 'historico_etapa', 'preenchido_em', 'atualizado_em']
+    readonly_fields = ['funcionario', 'preenchido_em', 'atualizado_em']
     inlines = [RespostaControleQualidadeInline]
     can_delete = False
+    fieldsets = (
+        ('Informações do Item', {
+            'fields': ('id_controle', 'nome_item', 'codigo_item')
+        }),
+        ('Sistema', {
+            'fields': ('funcionario', 'pontuacao', 'preenchido_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
     
     def has_add_permission(self, request):
         return False
@@ -215,8 +246,8 @@ class HistoricoControleQualidadeAdmin(admin.ModelAdmin):
 @admin.register(RespostaControleQualidade)
 class RespostaControleQualidadeAdmin(admin.ModelAdmin):
     list_display = ['pergunta', 'historico_controle', 'resposta_texto', 'resposta_opcao']
-    list_filter = ['pergunta__etapa', 'pergunta']
-    search_fields = ['historico_controle__pedido__nome', 'pergunta__pergunta']
+    list_filter = ['pergunta']
+    search_fields = ['historico_controle__nome_item', 'pergunta__pergunta']
     readonly_fields = ['pergunta', 'historico_controle', 'resposta_texto', 'resposta_opcao', 'preenchido_em']
     can_delete = False
     

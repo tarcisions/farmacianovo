@@ -18,6 +18,11 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:controle_qualidade' %}">
+            <i class="bi bi-clipboard-check"></i> Controle de Qualidade
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link" href="{% url 'dashboard:pedidos_disponiveis' %}">
             <i class="bi bi-play-circle"></i> Pedidos Disponíveis
         </a>
@@ -47,82 +52,371 @@
 {% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h1 class="h3 fw-bold"><i class="bi bi-check-circle text-success"></i> Rotas Finalizadas</h1>
-    {% if is_gestor %}
-    <form method="get" class="row g-2 align-items-end mb-3">
-        <div class="col-md-4">
-            <label for="filtro_funcionario" class="form-label mb-1">Filtrar por Funcionário</label>
-            <select class="form-select" id="filtro_funcionario" name="funcionario">
-                <option value="">Todos</option>
-                {% for func in funcionarios %}
-                <option value="{{ func.id }}" {% if func.id|stringformat:'s' == filtro_funcionario %}selected{% endif %}>{{ func.get_full_name|default:func.username }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filtrar</button>
-        </div>
-    </form>
-    {% endif %}
-</div>
-
-<div class="card shadow-sm">
-    <div class="table-responsive">
-        <table class="table table-hover table-sm mb-0">
-            <thead class="table-light">
-                <tr>
-                    {% if is_gestor %}<th style="width: 150px;">Funcionário</th>{% endif %}
-                    <th style="width: 80px;">ID</th>
-                    <th style="width: 100px;">ID Pedido</th>
-                    <th>Nome do Pedido</th>
-                    <th style="width: 100px;">Tipo</th>
-                    <th style="width: 140px;">Data Finalização</th>
-                    <th style="width: 80px;">Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for rota in rotas_finalizadas %}
-                <tr>
+<div class="py-4">
+    <!-- Header -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-12">
+            <div>
+                <h1 class="h3 fw-bold mb-1">
+                    <i class="bi bi-check-circle-fill text-success"></i> Rotas Finalizadas
+                </h1>
+                <p class="text-muted mb-0">
                     {% if is_gestor %}
-                    <td>
-                        <small class="fw-bold">{{ rota.funcionario.get_full_name|default:rota.funcionario.username }}</small>
-                    </td>
+                        Histórico de todas as rotas finalizadas pelos funcionários
+                    {% else %}
+                        Suas rotas finalizadas e entregues
                     {% endif %}
-                    <td>
-                        <span class="badge bg-primary">{{ rota.pedido.id_api }}</span>
-                    </td>
-                    <td>
-                        <code class="text-muted">{{ rota.pedido.id_pedido_api|default:"-" }}</code>
-                    </td>
-                    <td>
-                        <small title="{{ rota.pedido.nome }}">{{ rota.pedido.nome|truncatewords:10 }}</small>
-                    </td>
-                    <td>
-                        {% if rota.pedido.tipo_identificado %}
-                        <span class="badge bg-info">{{ rota.pedido.tipo_identificado|upper|truncatewords:2 }}</span>
-                        {% else %}
-                        <span class="badge bg-secondary">-</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <small class="text-muted">{{ rota.timestamp_fim|date:'d/m/Y H:i' }}</small>
-                    </td>
-                    <td>
-                        <a href="{% url 'dashboard:detalhe_rota_finalizada' rota.id %}" class="btn btn-outline-primary btn-sm" title="Ver detalhes">
-                            <i class="bi bi-eye"></i>
-                        </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="{% if is_gestor %}7{% else %}6{% endif %}" class="text-center text-muted py-4">
-                        <i class="bi bi-inbox"></i> Nenhuma rota finalizada encontrada
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card de Filtros (apenas para Gerente) -->
+    {% if is_gestor %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="bi bi-funnel"></i> Filtros
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="get" id="filtros-form" class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label for="filtro-funcionario" class="form-label mb-2">
+                        <i class="bi bi-person-circle"></i> Filtrar por Funcionário
+                    </label>
+                    <div class="autocomplete-container">
+                        <input 
+                            type="text" 
+                            class="form-control form-control-lg" 
+                            id="filtro-funcionario"
+                            placeholder="Digite o nome do funcionário..."
+                            name="funcionario" 
+                            value="{{ filtro_funcionario }}"
+                            autocomplete="off"
+                        >
+                        <ul class="autocomplete-list" id="autocomplete-list"></ul>
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                    <a href="{% url 'dashboard:rotas_finalizadas_gerente' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Card Principal -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-gradient text-white py-3" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-table"></i> Lista de Rotas Finalizadas
+                </h5>
+                <span class="badge bg-white text-success" style="font-size: 0.85rem;">
+                    {{ rotas_finalizadas|length }} rota{{ rotas_finalizadas|length|pluralize }}
+                </span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            {% if rotas_finalizadas %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            {% if is_gestor %}
+                            <th style="width: 180px;">
+                                <i class="bi bi-person"></i> Funcionário
+                            </th>
+                            {% endif %}
+                            <th style="width: 90px;">
+                                <i class="bi bi-hash"></i> NRORC
+                            </th>
+                            <th style="width: 110px;">ID Pedido</th>
+                            <th>Nome do Pedido</th>
+                            <th style="width: 120px;">
+                                <i class="bi bi-tag"></i> Tipo
+                            </th>
+                            <th style="width: 150px;">
+                                <i class="bi bi-calendar-check"></i> Finalização
+                            </th>
+                            <th style="width: 70px;" class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rota in rotas_finalizadas %}
+                        <tr class="border-bottom">
+                            {% if is_gestor %}
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-person-circle text-primary" style="font-size: 1.5rem;"></i>
+                                    <div>
+                                        <strong class="d-block">{{ rota.funcionario.get_full_name|default:rota.funcionario.username }}</strong>
+                                        <small class="text-muted">@{{ rota.funcionario.username }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            {% endif %}
+                            <td>
+                                <span class="badge bg-primary" style="font-size: 0.9rem;">{{ rota.pedido.nrorc|default:"—" }}</span>
+                            </td>
+                            <td>
+                                <code class="text-muted">{{ rota.pedido.id_pedido_api|default:"—" }}</code>
+                            </td>
+                            <td>
+                                <strong class="text-dark">{{ rota.pedido.nome|truncatewords:6 }}</strong>
+                            </td>
+                            <td>
+                                {% if rota.pedido.tipo_identificado %}
+                                    <span class="badge bg-info text-white">
+                                        <i class="bi bi-box"></i> {{ rota.pedido.tipo_identificado|upper|truncatewords:2 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    <i class="bi bi-clock-history"></i>
+                                    <strong>{{ rota.timestamp_fim|date:'d/m/Y' }}</strong>
+                                    <br>
+                                    <span class="text-muted">{{ rota.timestamp_fim|date:'H:i:s' }}</span>
+                                </small>
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'dashboard:detalhe_rota_finalizada' rota.id %}" class="btn btn-sm btn-outline-primary" title="Ver detalhes">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <!-- Empty State -->
+            <div class="text-center py-5">
+                <div style="font-size: 4rem; color: #e9ecef; margin-bottom: 1rem;">
+                    <i class="bi bi-inbox"></i>
+                </div>
+                <h5 class="text-muted">Nenhuma rota finalizada</h5>
+                <p class="text-muted small">
+                    {% if is_gestor %}
+                        Não há rotas finalizadas no momento. As rotas entregues aparecerão aqui.
+                    {% else %}
+                        Você ainda não finalizou nenhuma rota.
+                    {% endif %}
+                </p>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bg-gradient {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(40, 167, 69, 0.05);
+        transition: background-color 0.2s ease;
+    }
+
+    .card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .badge {
+        font-weight: 500;
+        padding: 0.4rem 0.7rem;
+    }
+
+    code {
+        font-size: 0.85rem;
+        background-color: #f8f9fa;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+    }
+
+    .form-select {
+        border-color: #dee2e6;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-select:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4f46e5 0%, #3b3ae5 100%);
+        border: none;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    }
+
+    /* Autocomplete Styles */
+    .autocomplete-container {
+        position: relative;
+    }
+
+    .autocomplete-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        max-height: 200px;
+        overflow-y: auto;
+        display: none;
+        z-index: 1000;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .autocomplete-list.active {
+        display: block;
+    }
+
+    .autocomplete-list li {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 0.9rem;
+    }
+
+    .autocomplete-list li:hover,
+    .autocomplete-list li.selected {
+        background-color: #e7f3ff;
+    }
+
+    .autocomplete-list li:last-child {
+        border-bottom: none;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const funcionarioInput = document.getElementById('filtro-funcionario');
+    const autocompleteList = document.getElementById('autocomplete-list');
+    const filtrosForm = document.getElementById('filtros-form');
+    let timeoutId;
+
+    // Autocomplete para funcionário
+    funcionarioInput.addEventListener('input', function() {
+        clearTimeout(timeoutId);
+        const valor = this.value.trim();
+
+        if (valor.length < 1) {
+            autocompleteList.classList.remove('active');
+            return;
+        }
+
+        timeoutId = setTimeout(function() {
+            // Dados dos funcionários que vem do servidor
+            const jsonStr = '{{ funcionarios_json|safe }}';
+            let funcionarios = [];
+            
+            if (jsonStr && jsonStr.length > 0) {
+                try {
+                    funcionarios = JSON.parse(jsonStr);
+                } catch (e) {
+                    funcionarios = [];
+                }
+            }
+            
+            // Filtrar funcionários que contêm o texto digitado
+            const resultados = funcionarios.filter(f => 
+                f && f.nome && f.nome.toLowerCase().includes(valor.toLowerCase())
+            );
+
+            // Limpar lista
+            autocompleteList.innerHTML = '';
+
+            if (resultados.length === 0) {
+                autocompleteList.classList.remove('active');
+                return;
+            }
+
+            // Adicionar resultados
+            resultados.forEach(f => {
+                const li = document.createElement('li');
+                li.textContent = f.nome;
+                li.dataset.valor = f.nome;
+                
+                li.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    funcionarioInput.value = f.nome;
+                    autocompleteList.classList.remove('active');
+                });
+
+                autocompleteList.appendChild(li);
+            });
+
+            autocompleteList.classList.add('active');
+        }, 300);
+    });
+
+    // Fechar autocomplete ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.autocomplete-container')) {
+            autocompleteList.classList.remove('active');
+        }
+    });
+
+    // Permitir navegação no autocomplete com setas
+    funcionarioInput.addEventListener('keydown', function(e) {
+        const items = autocompleteList.querySelectorAll('li');
+        let selected = autocompleteList.querySelector('li.selected');
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const nextItem = selected ? selected.nextElementSibling : items[0];
+            if (nextItem) {
+                if (selected) selected.classList.remove('selected');
+                nextItem.classList.add('selected');
+                nextItem.scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prevItem = selected ? selected.previousElementSibling : items[items.length - 1];
+            if (prevItem) {
+                if (selected) selected.classList.remove('selected');
+                prevItem.classList.add('selected');
+                prevItem.scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selected) {
+                funcionarioInput.value = selected.dataset.valor;
+                autocompleteList.classList.remove('active');
+                selected.classList.remove('selected');
+            } else {
+                filtrosForm.submit();
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

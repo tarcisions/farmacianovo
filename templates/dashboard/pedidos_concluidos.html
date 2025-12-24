@@ -8,143 +8,283 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    
-    <div class="main-content">
-        <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="py-4">
+    <!-- Header com Estatísticas -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-12">
             <div>
-                <h1 class="mb-1">
-                    <i class="bi bi-check-circle"></i> Pedidos Concluídos
+                <h1 class="h3 fw-bold mb-1">
+                    <i class="bi bi-check-circle-fill text-success"></i> Pedidos Concluídos
                 </h1>
-                <p class="text-muted">Todos os pedidos finalizados no sistema</p>
+                <p class="text-muted mb-0">Histórico de todos os pedidos finalizados no sistema</p>
             </div>
         </div>
+    </div>
 
-        <!-- Tabela de Pedidos -->
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="bi bi-list-check"></i> Pedidos Concluídos
-                </h5>
-                <span class="badge bg-success">Total: {{ page_obj.paginator.count }}</span>
+    <!-- Cards de Estatísticas -->
+    {% if page_obj %}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <p class="text-muted mb-1 small">
+                                <i class="bi bi-boxes text-success"></i> Total
+                            </p>
+                            <h3 class="mb-0 text-success">{{ page_obj.paginator.count }}</h3>
+                        </div>
+                        <div class="text-success opacity-25" style="font-size: 2.5rem;">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body p-0">
-                {% if page_obj %}
-                <div class="table-responsive">
-                    <table class="table table-hover table-sm mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 100px;">ID API</th>
-                                <th style="width: 100px;">ID Pedido</th>
-                                <th>Nome</th>
-                                <th style="width: 110px;">Tipo</th>
-                                <th style="width: 130px;">Data Conclusão</th>
-                                <th style="width: 80px;">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for pedido in page_obj %}
-                            <tr>
-                                <td class="text-mono">
-                                    <strong>{{ pedido.id_api }}</strong>
-                                </td>
-                                <td class="text-mono">
-                                    <small class="text-muted">{{ pedido.codigo_pedido|default:"-" }}</small>
-                                </td>
-                                <td>
-                                    <span class="text-decoration-none">
-                                        {{ pedido.nome|truncatewords:8 }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-light text-dark">
-                                        {% if pedido.tipo %}
-                                            {{ pedido.tipo.nome }}
-                                        {% else %}
-                                            Padrão
-                                        {% endif %}
-                                    </span>
-                                </td>
-                                <td>
-                                    <small class="text-muted">
-                                        {% if pedido.concluido_em %}
-                                            {{ pedido.concluido_em|date:"d/m/Y H:i" }}
-                                        {% else %}
-                                            {{ pedido.data_atualizacao_api|date:"d/m/Y H:i" }}
-                                        {% endif %}
-                                    </small>
-                                </td>
-                                <td>
-                                    <span class="text-muted">-</span>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <p class="text-muted mb-1 small">
+                                <i class="bi bi-file-earmark text-info"></i> Nesta Página
+                            </p>
+                            <h3 class="mb-0 text-info">{{ page_obj.paginator.per_page }}</h3>
+                        </div>
+                        <div class="text-info opacity-25" style="font-size: 2.5rem;">
+                            <i class="bi bi-list"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Card de Filtros -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="bi bi-funnel"></i> Filtros
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-2">
+                    <label for="filtro-nrorc" class="form-label mb-2">NRORC</label>
+                    <input 
+                        type="text" 
+                        class="form-control form-control-sm" 
+                        id="filtro-nrorc"
+                        placeholder="Filtrar por NRORC..."
+                        name="nrorc" 
+                        value="{{ filtros.nrorc }}"
+                    >
                 </div>
 
-                <!-- Paginação -->
-                {% if is_paginated %}
-                <nav class="d-flex justify-content-between align-items-center p-3 border-top" aria-label="Paginação">
-                    <small class="text-muted">
-                        Mostrando {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ page_obj.paginator.count }} pedidos
-                    </small>
-                    
-                    <ul class="pagination mb-0">
-                        {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page=1">Primeira</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
-                        </li>
-                        {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">Primeira</span>
-                        </li>
-                        <li class="page-item disabled">
-                            <span class="page-link">Anterior</span>
-                        </li>
-                        {% endif %}
+                <div class="col-md-2">
+                    <label for="filtro-nome" class="form-label mb-2">Nome do Pedido</label>
+                    <input 
+                        type="text" 
+                        class="form-control form-control-sm" 
+                        id="filtro-nome"
+                        placeholder="Filtrar por nome..."
+                        name="nome" 
+                        value="{{ filtros.nome }}"
+                    >
+                </div>
 
-                        {% for num in page_obj.paginator.page_range %}
-                            {% if page_obj.number == num %}
-                            <li class="page-item active">
-                                <span class="page-link">{{ num }}</span>
-                            </li>
-                            {% else %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                            </li>
-                            {% endif %}
+                <div class="col-md-2">
+                    <label for="filtro-tipo" class="form-label mb-2">Tipo de Produto</label>
+                    <select class="form-select form-select-sm" id="filtro-tipo" name="tipo">
+                        <option value="">Todos os tipos</option>
+                        {% for tipo in tipos_disponiveis %}
+                        <option value="{{ tipo.tipo }}" {% if filtros.tipo == tipo.tipo %}selected{% endif %}>
+                            {{ tipo.tipo|upper }}
+                        </option>
                         {% endfor %}
-
-                        {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
-                        </li>
-                        {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">Próxima</span>
-                        </li>
-                        <li class="page-item disabled">
-                            <span class="page-link">Última</span>
-                        </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-                {% endif %}
-                {% else %}
-                <div class="text-center py-5">
-                    <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
-                    <p class="text-muted mt-3">Nenhum pedido concluído no momento</p>
+                    </select>
                 </div>
-                {% endif %}
+
+                <div class="col-md-2">
+                    <label for="filtro-data-inicio" class="form-label mb-2">Data Início</label>
+                    <input 
+                        type="date" 
+                        class="form-control form-control-sm" 
+                        id="filtro-data-inicio"
+                        name="data_inicio" 
+                        value="{{ filtros.data_inicio }}"
+                    >
+                </div>
+
+                <div class="col-md-2">
+                    <label for="filtro-data-fim" class="form-label mb-2">Data Fim</label>
+                    <input 
+                        type="date" 
+                        class="form-control form-control-sm" 
+                        id="filtro-data-fim"
+                        name="data_fim" 
+                        value="{{ filtros.data_fim }}"
+                    >
+                </div>
+
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                    <a href="{% url 'dashboard:pedidos_concluidos' %}" class="btn btn-secondary btn-sm flex-grow-1">
+                        <i class="bi bi-arrow-clockwise"></i> Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de Pedidos -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-gradient text-white py-3" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-table"></i> Lista de Pedidos Concluídos
+                </h5>
+                <span class="badge bg-white text-success" style="font-size: 0.85rem;">{{ page_obj.paginator.count }} pedidos</span>
             </div>
+        </div>
+        <div class="card-body p-0">
+            {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px;">
+                                <i class="bi bi-hash"></i> NRORC
+                            </th>
+                            <th style="width: 100px;">Código</th>
+                            <th>Nome do Pedido</th>
+                            <th style="width: 120px;">
+                                <i class="bi bi-tag"></i> Tipo
+                            </th>
+                            <th style="width: 150px;">
+                                <i class="bi bi-calendar-check"></i> Conclusão
+                            </th>
+                            <th style="width: 80px;" class="text-center">Qtd</th>
+                            <th style="width: 70px;" class="text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pedido in page_obj %}
+                        <tr class="border-bottom">
+                            <td>
+                                <span class="badge bg-primary">{{ pedido.nrorc|default:"—" }}</span>
+                            </td>
+                            <td>
+                                <code class="text-muted">{{ pedido.codigo_pedido|default:"—" }}</code>
+                            </td>
+                            <td>
+                                <strong class="text-dark">{{ pedido.nome|truncatewords:6 }}</strong>
+                                <br>
+                                <small class="text-muted">ID: {{ pedido.id }}</small>
+                            </td>
+                            <td>
+                                {% if pedido.tipo %}
+                                    <span class="badge bg-light text-dark border border-secondary">
+                                        <i class="bi bi-box"></i> {{ pedido.tipo.nome|truncatewords:2 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    <i class="bi bi-clock-history"></i>
+                                    {% if pedido.concluido_em %}
+                                        <strong>{{ pedido.concluido_em|date:"d/m/Y" }}</strong>
+                                        <br>
+                                        <span class="text-muted">{{ pedido.concluido_em|date:"H:i:s" }}</span>
+                                    {% else %}
+                                        {{ pedido.data_atualizacao_api|date:"d/m/Y H:i" }}
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info" title="Quantidade">{{ pedido.quantidade }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-success" style="font-size: 0.75rem;">
+                                    <i class="bi bi-check-circle"></i> OK
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            {% if is_paginated %}
+            <nav class="d-flex justify-content-between align-items-center p-3 border-top bg-light" aria-label="Paginação">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i>
+                    Exibindo <strong>{{ page_obj.start_index }}</strong> a <strong>{{ page_obj.end_index }}</strong> de <strong>{{ page_obj.paginator.count }}</strong> pedidos
+                </small>
+                
+                <ul class="pagination mb-0 gap-1">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1" title="Primeira página">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" title="Página anterior">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="bi bi-chevron-double-left"></i></span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="bi bi-chevron-left"></i></span>
+                    </li>
+                    {% endif %}
+
+                    <span class="text-muted small align-self-center px-2">
+                        Página <strong>{{ page_obj.number }}</strong> de <strong>{{ page_obj.paginator.num_pages }}</strong>
+                    </span>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}" title="Próxima página">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" title="Última página">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="bi bi-chevron-right"></i></span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="bi bi-chevron-double-right"></i></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <!-- Empty State -->
+            <div class="text-center py-5">
+                <div style="font-size: 4rem; color: #e9ecef; margin-bottom: 1rem;">
+                    <i class="bi bi-inbox"></i>
+                </div>
+                <h5 class="text-muted">Nenhum pedido concluído</h5>
+                <p class="text-muted small">Não há pedidos concluídos no momento. Os pedidos finalizados aparecerão aqui.</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -153,24 +293,51 @@
 
 {% block extra_css %}
 <style>
-    .text-mono {
-        font-family: 'Courier New', monospace;
-        font-size: 0.9rem;
+    .bg-gradient {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
     }
-    
-    .main-content {
-        margin-left: 250px;
-        padding: 0 20px;
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(40, 167, 69, 0.05);
+        transition: background-color 0.2s ease;
     }
-    
-    @media (max-width: 768px) {
-        .main-content {
-            margin-left: 0;
-        }
-        
-        .table-responsive {
-            font-size: 0.85rem;
-        }
+
+    .card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .badge {
+        font-weight: 500;
+        padding: 0.4rem 0.7rem;
+    }
+
+    code {
+        font-size: 0.85rem;
+        background-color: #f8f9fa;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+    }
+
+    .pagination .page-link {
+        border: none;
+        background-color: #f8f9fa;
+        color: #4f46e5;
+        transition: all 0.2s ease;
+    }
+
+    .pagination .page-link:hover {
+        background-color: #4f46e5;
+        color: white;
+    }
+
+    .pagination .page-item.active .page-link {
+        background-color: #4f46e5;
+        color: white;
     }
 </style>
 {% endblock %}
