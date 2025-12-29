@@ -8,11 +8,6 @@
 {% else %}
 <ul class="nav flex-column">
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'dashboard:funcionario' %}">
-            <i class="bi bi-speedometer2"></i> Dashboard
-        </a>
-    </li>
-    <li class="nav-item">
         <a class="nav-link" href="{% url 'dashboard:meus_pedidos' %}">
             <i class="bi bi-list-task"></i> Meus Pedidos
         </a>
@@ -166,7 +161,7 @@
                                 <span class="badge bg-primary" style="font-size: 0.9rem;">{{ rota.pedido.nrorc|default:"—" }}</span>
                             </td>
                             <td>
-                                <code class="text-muted">{{ rota.pedido.id_pedido_api|default:"—" }}</code>
+                                <code class="text-muted">{{ rota.pedido.serieo|default:"0" }}</code>
                             </td>
                             <td>
                                 <strong class="text-dark">{{ rota.pedido.nome|truncatewords:6 }}</strong>

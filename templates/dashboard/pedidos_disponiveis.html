@@ -5,11 +5,6 @@
 {% block sidebar %}
 <ul class="nav flex-column">
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'dashboard:funcionario' %}">
-            <i class="bi bi-speedometer2"></i> Dashboard
-        </a>
-    </li>
-    <li class="nav-item">
         <a class="nav-link" href="{% url 'dashboard:meus_pedidos' %}">
             <i class="bi bi-list-task"></i> Meus Pedidos
         </a>
@@ -94,8 +89,7 @@
         </div>
     </div>
     <input type="hidden" name="nrorc" id="nrorc_hidden">
-    <input type="hidden" name="id_pedido" id="id_pedido_hidden">
-    <input type="hidden" name="id_pedido_web" id="id_pedido_web_hidden">
+    <input type="hidden" name="serieo" id="serieo_hidden">
 </form>
 
 <script>
@@ -104,8 +98,7 @@ function preencherIDs() {
     
     // Limpar campos hidden
     document.getElementById('nrorc_hidden').value = '';
-    document.getElementById('id_pedido_hidden').value = '';
-    document.getElementById('id_pedido_web_hidden').value = '';
+    document.getElementById('serieo_hidden').value = '';
     
     // Colocar o valor em UMA única tabela para busca específica
     // Você pode adicionar lógica para detectar qual tipo de ID é
@@ -159,8 +152,7 @@ document.getElementById('filtro_ids').addEventListener('keypress', function(e) {
                     {% for pedido in page_obj %}
                     <tr>
                         <td><strong class="text-primary">{{ pedido.nrorc|default:"N/A" }}</strong></td>
-                        <td><code class="text-muted">{{ pedido.id_pedido_api|default:"-" }}</code></td>
-                        <td><code class="text-muted">{{ pedido.id_pedido_web|default:"-" }}</code></td>
+                        <td><code class="text-muted">{{ pedido.serieo|default:"0" }}</code></td>
                         <td style="word-wrap: break-word; white-space: normal;"><small>{{ pedido.nome }}</small></td>
                         <td>
                             {% if pedido.tipo_identificado %}

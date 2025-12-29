@@ -244,9 +244,8 @@ class Pedido(models.Model):
     
     # Campos da API externa - IDs separados em colunas
     nrorc = models.BigIntegerField(unique=True, db_index=True, null=True, blank=True)  # NRORC - Número do RC (identificador único)
-    id_api = models.BigIntegerField(unique=True, db_index=True, null=True, blank=True)  # ID - ID único do item (removido do uso)
-    id_pedido_api = models.BigIntegerField(null=True, blank=True, db_index=True)  # IDPEDIDO (removido do uso)
-    id_pedido_web = models.BigIntegerField(null=True, blank=True, db_index=True)  # IDPEDIDOWEB (removido do uso)
+    serieo = models.CharField(max_length=20, blank=True, default='0', help_text='Série do item (SERIEO) vindo da API')
+    id_api = models.CharField(unique=True, db_index=True, null=True, blank=True, max_length=100)  # ID - Combinação NRORC-SERIEO
     descricao_web = models.TextField(blank=True)  # DESCRICAOWEB
     price_unit = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)  # PRUNI
     price_total = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)  # VRTOT
@@ -831,3 +830,170 @@ class RespostaControleQualidade(models.Model):
         if self.resposta_opcao:
             return f"{self.pergunta.pergunta} - {self.resposta_opcao.texto_opcao}"
         return f"{self.pergunta.pergunta} - {self.resposta_texto[:50]}"
+
+
+class ConfiguracaoAPI(models.Model):
+    """
+    Configuração de APIs externas
+    Armazena URLs, autenticações e outras configurações de forma centralizada
+    Permite gerenciar tudo pelo Django Admin ao invés de hardcodear no código
+    """
+    TIPO_AUTENTICACAO = [
+        ('nenhuma', 'Nenhuma'),
+        ('bearer_token', 'Bearer Token'),
+        ('api_key', 'API Key'),
+        ('login_senha', 'Usuário e Senha'),
+        ('custom', 'Customizada'),
+    ]
+    
+    nome = models.CharField(
+        max_length=200, 
+        unique=True,
+        help_text="Nome descritivo da API (ex: API Pedidos, API Estoque)"
+    )
+    url_base = models.URLField(
+        help_text="URL base da API (ex: https://api.exemplo.com/tabelas/FC0M100)"
+    )
+    descricao = models.TextField(
+        blank=True,
+        help_text="Descrição sobre a API e seu propósito"
+    )
+    
+    # Autenticação
+    tipo_autenticacao = models.CharField(
+        max_length=20,
+        choices=TIPO_AUTENTICACAO,
+        default='nenhuma',
+        help_text="Tipo de autenticação requerida pela API"
+    )
+    bearer_token = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Token para autenticação Bearer (se aplicável)"
+    )
+    api_key = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="API Key para autenticação (se aplicável)"
+    )
+    usuario = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Usuário para autenticação (se aplicável)"
+    )
+    senha = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Senha para autenticação (se aplicável)"
+    )
+    headers_customizados = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Headers customizados em formato JSON (ex: {\"Custom-Header\": \"value\"})"
+    )
+    
+    # Configurações
+    timeout = models.IntegerField(
+        default=30,
+        help_text="Timeout em segundos para requisições"
+    )
+    ativa = models.BooleanField(
+        default=True,
+        help_text="Se a API está ativa para sincronização"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Configuração de API'
+        verbose_name_plural = 'Configurações de API'
+    
+    def __str__(self):
+        return f"{self.nome} - {self.url_base[:50]}"
+    
+    def obter_headers_requisicao(self):
+        """Retorna os headers para a requisição HTTP"""
+        headers = {}
+        
+        if self.tipo_autenticacao == 'bearer_token' and self.bearer_token:
+            headers['Authorization'] = f'Bearer {self.bearer_token}'
+        elif self.tipo_autenticacao == 'api_key' and self.api_key:
+            headers['X-API-Key'] = self.api_key
+        elif self.tipo_autenticacao == 'custom' and self.headers_customizados:
+            headers.update(self.headers_customizados)
+        
+        return headers
+
+
+class AgendamentoSincronizacao(models.Model):
+    """
+    Define quando e com que frequência a API deve ser sincronizada
+    Permite agendamentos complexos: dias específicos, horários múltiplos, etc
+    """
+    DIAS_SEMANA = [
+        ('segunda', 'Segunda-feira'),
+        ('terca', 'Terça-feira'),
+        ('quarta', 'Quarta-feira'),
+        ('quinta', 'Quinta-feira'),
+        ('sexta', 'Sexta-feira'),
+        ('sabado', 'Sábado'),
+        ('domingo', 'Domingo'),
+    ]
+    
+    api = models.ForeignKey(
+        ConfiguracaoAPI,
+        on_delete=models.CASCADE,
+        related_name='agendamentos',
+        help_text="API a ser sincronizada"
+    )
+    nome = models.CharField(
+        max_length=200,
+        help_text="Nome descritivo do agendamento (ex: Sincronização Matinal)"
+    )
+    
+    # Dias da semana
+    executar_todos_os_dias = models.BooleanField(
+        default=True,
+        help_text="Se deve executar todos os dias"
+    )
+    dias_semana = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Lista de dias se não for todos os dias (ex: ['segunda', 'quarta', 'sexta'])"
+    )
+    
+    # Horários
+    horario_execucao = models.TimeField(
+        help_text="Horário em que a sincronização será executada (ex: 06:00)"
+    )
+    
+    # Paginações (configuração de quantas páginas buscar)
+    paginacoes = models.JSONField(
+        default=list,
+        help_text="Lista de dicts com paginações (ex: [{\"pagina\": 1, \"tamanho\": 50}, {\"pagina\": 2, \"tamanho\": 50}])"
+    )
+    
+    # Status
+    ativo = models.BooleanField(
+        default=True,
+        help_text="Se o agendamento está ativo"
+    )
+    descricao = models.TextField(
+        blank=True,
+        help_text="Notas adicionais sobre este agendamento"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['api', 'horario_execucao']
+        verbose_name = 'Agendamento de Sincronização'
+        verbose_name_plural = 'Agendamentos de Sincronização'
+    
+    def __str__(self):
+        dias_texto = "Todos os dias" if self.executar_todos_os_dias else ", ".join(self.dias_semana)
+        return f"{self.api.nome} - {self.horario_execucao} ({dias_texto})"
+    
+    def clean(self):
+        if not self.executar_todos_os_dias and not self.dias_semana:
+            raise ValidationError("Se não executar todos os dias, selecione pelo menos um dia da semana")

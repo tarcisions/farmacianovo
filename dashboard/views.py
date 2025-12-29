@@ -39,7 +39,7 @@ def home(request):
     user_groups = request.user.groups.values_list('name', flat=True)
     
     if 'Funcionário' in user_groups:
-        return redirect('dashboard:funcionario')
+        return redirect('dashboard:pedidos_disponiveis')
     elif 'Gerente' in user_groups:
         return redirect('dashboard:gerente')
     elif 'Superadmin' in user_groups or request.user.is_superuser:
@@ -60,6 +60,16 @@ def dashboard_funcionario(request):
         else:
             return redirect('dashboard:gerente')
     
+    hoje = timezone.now().date()
+    primeiro_dia_mes = hoje.replace(day=1)
+    
+    pontos_mes_atual = PontuacaoFuncionario.pontos_mes_atual(request.user)
+    
+    # Se for um funcionário, redirecionar para pedidos-disponiveis
+    if request.user.groups.filter(name='Funcionário').exists():
+        return redirect('dashboard:pedidos_disponiveis')
+    
+    # Caso contrário, exibir dashboard normal para admin/gerente
     hoje = timezone.now().date()
     primeiro_dia_mes = hoje.replace(day=1)
     
@@ -170,9 +180,8 @@ def pedidos_disponiveis_funcionario(request):
     nome = request.GET.get('nome', '').strip()
     etapa_id = request.GET.get('etapa', '')
     tipo_id = request.GET.get('tipo', '')
-    id_api = request.GET.get('id_api', '').strip()
-    id_pedido = request.GET.get('id_pedido', '').strip()
-    id_pedido_web = request.GET.get('id_pedido_web', '').strip()
+    nrorc = request.GET.get('nrorc', '').strip()
+    serieo = request.GET.get('serieo', '').strip()
 
     # Buscar todos os pedidos disponíveis
     todos_pedidos = Pedido.objects.filter(
@@ -187,16 +196,14 @@ def pedidos_disponiveis_funcionario(request):
     if tipo_id:
         todos_pedidos = todos_pedidos.filter(tipo_id=tipo_id)
     
-    # Se houver busca por ID, usar OR (qualquer um dos 3 campos)
-    if id_api or id_pedido or id_pedido_web:
+    # Se houver busca por NRORC ou SERIEO, usar OR
+    if nrorc or serieo:
         from django.db.models import Q
         filtro_ids = Q()
-        if id_api:
-            filtro_ids |= Q(id_api__icontains=id_api)
-        if id_pedido:
-            filtro_ids |= Q(id_pedido_api__icontains=id_pedido)
-        if id_pedido_web:
-            filtro_ids |= Q(id_pedido_web__icontains=id_pedido_web)
+        if nrorc:
+            filtro_ids |= Q(nrorc__icontains=nrorc)
+        if serieo:
+            filtro_ids |= Q(serieo__icontains=serieo)
         todos_pedidos = todos_pedidos.filter(filtro_ids)
 
     etapas = Etapa.objects.all()
@@ -214,9 +221,8 @@ def pedidos_disponiveis_funcionario(request):
         'filtro_nome': nome,
         'filtro_etapa': etapa_id,
         'filtro_tipo': tipo_id,
-        'filtro_id_api': id_api,
-        'filtro_id_pedido': id_pedido,
-        'filtro_id_pedido_web': id_pedido_web,
+        'filtro_nrorc': nrorc,
+        'filtro_serieo': serieo,
     }
 
     return render(request, 'dashboard/pedidos_disponiveis.html', context)
@@ -456,6 +462,28 @@ def concluir_etapa(request, pedido_id):
         if not historico:
             messages.error(request, 'Histórico de etapa não encontrado.')
             return redirect('dashboard:meus_pedidos')
+        
+        # VALIDAÇÃO: Verificar checklists obrigatórios não marcados
+        if pedido.etapa_atual and pedido.etapa_atual.se_possui_checklists:
+            checklists_obrigatorios = pedido.etapa_atual.checklists.filter(obrigatorio=True, ativo=True)
+            checklists_nao_marcados = []
+            
+            for checklist_obj in checklists_obrigatorios:
+                exec_check = ChecklistExecucao.objects.filter(
+                    historico_etapa=historico,
+                    checklist=checklist_obj
+                ).first()
+                
+                if not exec_check or not exec_check.marcado:
+                    checklists_nao_marcados.append(checklist_obj.nome)
+            
+            if checklists_nao_marcados:
+                lista_checklists = ', '.join(checklists_nao_marcados)
+                messages.warning(
+                    request,
+                    f'Você não pode concluir esta etapa! Os seguintes checklists obrigatórios não foram marcados: {lista_checklists}'
+                )
+                return redirect('dashboard:trabalhar_pedido', pedido_id=pedido_id)
         
         # Calcular pontos
         pontos_totais = Decimal('0')
@@ -1774,6 +1802,53 @@ def perfil_funcionario(request, user_id=None):
         historico_etapas__funcionario=usuario
     ).distinct().count()
     
+    # ADICIONAR: Dados do dashboard com gráficos (igual ao dashboard_funcionario)
+    etapas_concluidas = HistoricoEtapa.objects.filter(
+        funcionario=usuario,
+        timestamp_fim__isnull=False,
+        timestamp_inicio__gte=primeiro_dia_mes
+    ).values('etapa__nome').annotate(
+        total_pontos=Sum('pontos_gerados'),
+        quantidade=Count('id')
+    )
+    
+    # Calcular evolução de pontos diária
+    pontuacoes_mes = PontuacaoFuncionario.objects.filter(
+        funcionario=usuario,
+        mes_referencia__gte=primeiro_dia_mes
+    ).order_by('timestamp').values('timestamp', 'pontos')
+    
+    # Agrupar por dia e acumular pontos
+    from collections import defaultdict
+    pontos_por_dia = defaultdict(float)
+    for p in pontuacoes_mes:
+        dia = p['timestamp'].date()
+        pontos_por_dia[dia] += float(p['pontos'])
+    
+    # Criar lista de dias do mês com acumulado
+    dias_mes = []
+    acumulado = 0
+    for dia in range(1, 32):
+        try:
+            data_dia = primeiro_dia_mes.replace(day=dia)
+            if data_dia <= hoje:
+                if data_dia in pontos_por_dia:
+                    acumulado += pontos_por_dia[data_dia]
+                dias_mes.append({
+                    'dia': data_dia.strftime('%d/%m'),
+                    'pontos': int(acumulado)
+                })
+        except ValueError:
+            break
+    
+    # Se não houver dados no mês, criar estrutura vazia
+    if not dias_mes:
+        dias_mes = [{'dia': hoje.strftime('%d/%m'), 'pontos': int(pontos_mes_atual)}]
+    
+    import json
+    dias_labels = json.dumps([d['dia'] for d in dias_mes])
+    dias_data = json.dumps([d['pontos'] for d in dias_mes])
+    
     context = {
         'usuario_perfil': usuario,
         'pontos_mes_atual': pontos_mes_atual,
@@ -1787,6 +1862,11 @@ def perfil_funcionario(request, user_id=None):
         'ultimos_meses': ultimos_meses,
         'total_pontos_todos_tempos': total_pontos_todos_tempos,
         'total_pedidos_trabalhados': total_pedidos_trabalhados,
+        # Dados do dashboard para gráficos
+        'etapas_concluidas': etapas_concluidas,
+        'dias_labels': dias_labels,
+        'dias_data': dias_data,
+        'pedidos_trabalhados': total_pedidos_trabalhados,
     }
     
     return render(request, 'dashboard/perfil_funcionario.html', context)

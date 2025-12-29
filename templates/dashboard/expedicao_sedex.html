@@ -59,7 +59,7 @@
                                                onchange="updateSelectAll('select-all-sedex', 'select-pedido-sedex')">
                                     </td>
                                     <td><strong class="text-primary">{{ pedido.nrorc }}</strong></td>
-                                    <td><code class="text-muted">{{ pedido.id_pedido_api|default:"-" }}</code></td>
+                                    <td><code class="text-muted">{{ pedido.serieo|default:"0" }}</code></td>
                                     <td><small style="word-wrap: break-word; white-space: normal; max-width: 200px; display: inline-block;">{{ pedido.nome }}</small></td>
                                     <td>
                                         {% if pedido.tipo_identificado %}
@@ -136,7 +136,7 @@
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div class="flex-grow-1">
                                 <strong class="text-primary">{{ pedido.nrorc }}</strong>
-                                <code class="text-muted ms-2">{{ pedido.id_pedido_api|default:"-" }}</code>
+                                <code class="text-muted ms-2">{{ pedido.serieo|default:"0" }}</code>
                                 <br>
                                 <small class="text-muted" style="word-wrap: break-word; white-space: normal; max-width: 200px; display: inline-block;">{{ pedido.nome }}</small>
                                 <br>

@@ -47,12 +47,8 @@
                 <input type="text" class="form-control" name="nrorc" value="{{ nrorc_filtro }}" placeholder="Ex: 12345">
             </div>
             <div class="col-md-2">
-                <label class="form-label">IDPEDIDO</label>
-                <input type="text" class="form-control" name="id_pedido_api" value="{{ id_pedido_api_filtro }}" placeholder="Ex: 60145">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">IDPEDIDOWEB</label>
-                <input type="text" class="form-control" name="id_pedido_web" value="{{ id_pedido_web_filtro }}" placeholder="Ex: 86715">
+                <label class="form-label">SERIEO</label>
+                <input type="text" class="form-control" name="serieo" value="{{ serieo_filtro }}" placeholder="Ex: 0">
             </div>
             <div class="col-md-2">
                 <label class="form-label">Nome</label>
@@ -138,10 +134,10 @@
                             <strong class="text-primary">{{ pedido.nrorc|default:"N/A" }}</strong>
                         </td>
                         <td>
-                            <code class="text-muted">{{ pedido.id_pedido_api|default:"-" }}</code>
+                            <code class="text-muted">{{ pedido.nrorc|default:"-" }}</code>
                         </td>
                         <td>
-                            <code class="text-muted">{{ pedido.id_pedido_web|default:"-" }}</code>
+                            <code class="text-muted">{{ pedido.serieo|default:"-" }}</code>
                         </td>
                         <td style="word-wrap: break-word; white-space: normal;">
                             {{ pedido.nome }}

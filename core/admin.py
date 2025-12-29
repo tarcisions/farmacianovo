@@ -9,7 +9,8 @@ from .models import (
     ConfiguracaoExpedicao, RegistroExpedicao,
     LogAuditoria,
     ControlePergunta, ControlePerguntaOpcao, HistoricoControleQualidade, RespostaControleQualidade,
-    ConfiguracaoControleQualidade
+    ConfiguracaoControleQualidade,
+    ConfiguracaoAPI, AgendamentoSincronizacao
 )
 
 @admin.register(Etapa)
@@ -51,15 +52,15 @@ class ChecklistAdmin(admin.ModelAdmin):
 
 @admin.register(Pedido)
 class PedidoAdmin(admin.ModelAdmin):
-    list_display = ['id_api', 'id_pedido_api', 'id_pedido_web', 'nome_resumido', 'tipo', 'quantidade', 'status', 'etapa_atual', 'criado_em']
+    list_display = ['nrorc', 'serieo', 'nome_resumido', 'tipo', 'quantidade', 'status', 'etapa_atual', 'criado_em']
     list_filter = ['status', 'tipo', 'etapa_atual', 'tipo_identificado']
-    search_fields = ['id_api', 'id_pedido_api', 'id_pedido_web', 'nome', 'descricao_web']
+    search_fields = ['nrorc', 'serieo', 'nome', 'descricao_web']
     date_hierarchy = 'criado_em'
-    readonly_fields = ['id_api', 'id_pedido_api', 'id_pedido_web', 'descricao_web', 'price_unit', 'price_total', 'data_atualizacao_api', 'tipo_identificado', 'criado_em', 'atualizado_em']
+    readonly_fields = ['id_api', 'descricao_web', 'price_unit', 'price_total', 'data_atualizacao_api', 'tipo_identificado', 'criado_em', 'atualizado_em']
     
     fieldsets = (
         ('IDs da API (Somente Leitura)', {
-            'fields': ('id_api', 'id_pedido_api', 'id_pedido_web')
+            'fields': ('nrorc', 'serieo', 'id_api')
         }),
         ('Informações do Produto', {
             'fields': ('nome', 'descricao_web', 'tipo', 'quantidade')
@@ -253,3 +254,50 @@ class RespostaControleQualidadeAdmin(admin.ModelAdmin):
     
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(ConfiguracaoAPI)
+class ConfiguracaoAPIAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'url_base', 'tipo_autenticacao', 'ativa', 'atualizado_em']
+    list_filter = ['tipo_autenticacao', 'ativa']
+    search_fields = ['nome', 'url_base', 'descricao']
+    readonly_fields = ['criado_em', 'atualizado_em']
+    
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('nome', 'url_base', 'descricao', 'ativa')
+        }),
+        ('Autenticação', {
+            'fields': ('tipo_autenticacao', 'bearer_token', 'api_key', 'usuario', 'senha', 'headers_customizados')
+        }),
+        ('Configurações', {
+            'fields': ('timeout', 'criado_em', 'atualizado_em')
+        }),
+    )
+
+
+@admin.register(AgendamentoSincronizacao)
+class AgendamentoSincronizacaoAdmin(admin.ModelAdmin):
+    list_display = ['api', 'nome', 'horario_execucao', 'ativo', 'atualizado_em']
+    list_filter = ['api', 'ativo', 'executar_todos_os_dias']
+    search_fields = ['api__nome', 'nome', 'descricao']
+    readonly_fields = ['criado_em', 'atualizado_em']
+    
+    fieldsets = (
+        ('API e Agendamento', {
+            'fields': ('api', 'nome', 'descricao')
+        }),
+        ('Dias de Execução', {
+            'fields': ('executar_todos_os_dias', 'dias_semana')
+        }),
+        ('Horário', {
+            'fields': ('horario_execucao',)
+        }),
+        ('Paginações', {
+            'fields': ('paginacoes',),
+            'description': 'Lista de dicts: [{"pagina": 1, "tamanho": 50}]'
+        }),
+        ('Status', {
+            'fields': ('ativo', 'criado_em', 'atualizado_em')
+        }),
+    )

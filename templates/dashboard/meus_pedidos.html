@@ -6,11 +6,6 @@
 {% block sidebar %}
 <ul class="nav flex-column">
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'dashboard:funcionario' %}">
-            <i class="bi bi-speedometer2"></i> Dashboard
-        </a>
-    </li>
-    <li class="nav-item">
         <a class="nav-link active" href="{% url 'dashboard:meus_pedidos' %}">
             <i class="bi bi-list-task"></i> Meus Pedidos
         </a>
@@ -70,8 +65,8 @@
             <div class="card-body">
                 <small style="word-wrap: break-word; white-space: normal;">{{ pedido.nome }}</small>
                 <p class="mt-2"><strong>IDs:</strong> <br>
-                    <code class="text-muted">IDPEDIDO: {{ pedido.id_pedido_api|default:"-" }}</code> |
-                    <code class="text-muted">IDWEB: {{ pedido.id_pedido_web|default:"-" }}</code>
+                    <code class="text-muted">NRORC: {{ pedido.nrorc|default:"-" }}</code> | 
+                    <code class="text-muted">SERIEO: {{ pedido.serieo|default:"0" }}</code>
                 </p>
                 <p><strong>Tipo:</strong> 
                     {% if pedido.tipo_identificado %}

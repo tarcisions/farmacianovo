@@ -62,8 +62,7 @@
             </div>
             <div class="card-body">
                 <p><strong>ID API:</strong> <code class="text-primary">{{ pedido.nrorc }}</code></p>
-                <p><strong>IDPEDIDO:</strong> <code class="text-muted">{{ pedido.id_pedido_api|default:"-" }}</code></p>
-                <p><strong>IDPEDIDOWEB:</strong> <code class="text-muted">{{ pedido.id_pedido_web|default:"-" }}</code></p>
+                <p><strong>SERIEO:</strong> <code class="text-muted">{{ pedido.serieo|default:"0" }}</code></p>
                 <p><strong>Nome:</strong> <small style="word-wrap: break-word; white-space: normal;">{{ pedido.nome }}</small></p>
                 <p><strong>Tipo:</strong> 
                     {% if pedido.tipo_identificado %}
