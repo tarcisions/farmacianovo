@@ -3,124 +3,156 @@
 
 {% block title %}Editar Usuário{% endblock %}
 
+{% block extra_css %}
+<style>
+    .nav-tabs { margin-bottom: 0 !important; }
+    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
+    .tab-pane { display: none; }
+    .tab-pane.show.active { display: block; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Editar Usuário: {{ usuario.username }}</h4>
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-pencil-square" style="color: #4f46e5;"></i> Editar Usuário
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">
+            Atualize os dados do usuário <strong>{{ usuario.username }}</strong>
+        </p>
+    </div>
+    <a href="{% url 'core:usuarios' %}" class="btn btn-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+</div>
+
+<!-- ERROS -->
+{% if erros %}
+<div class="card mb-3" style="border-left: 4px solid #dc2626; background: #fee2e2; border-color: #fca5a5;">
+    <div class="card-body">
+        <h5 style="color: #991b1b; margin-bottom: 0.5rem;">Erros encontrados:</h5>
+        <ul style="margin: 0; padding-left: 1.5rem; color: #991b1b;">
+            {% for erro in erros %}
+            <li>{{ erro }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+<!-- FORM CARD -->
+<div class="card">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <h3 class="card-title">
+            <i class="bi bi-info-circle"></i> Informações do Usuário
+        </h3>
+    </div>
+    <div class="card-body">
+        <form method="post" class="needs-validation" novalidate style="display: grid; gap: 1.5rem; max-width: 800px;">
+            {% csrf_token %}
+
+            <!-- Nome de Usuário (Desabilitado) -->
+            <div>
+                <label class="form-label">Nome de Usuário</label>
+                <input type="text" class="form-control" value="{{ usuario.username }}" disabled
+                       style="background: #f9fafb; color: #64748b;">
+                <small class="form-text text-muted">Não é possível alterar o nome de usuário</small>
+            </div>
+
+            <!-- Email -->
+            <div>
+                <label class="form-label">Email *</label>
+                <input type="email" class="form-control" name="email" value="{{ usuario.email }}" required>
+                <small class="form-text text-muted">Email válido é obrigatório</small>
+            </div>
+
+            <!-- Nome e Sobrenome -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div>
+                    <label class="form-label">Primeiro Nome</label>
+                    <input type="text" class="form-control" name="first_name" value="{{ usuario.first_name }}">
                 </div>
-                <div class="card-body">
-                    {% if erros %}
-                    <div class="alert alert-danger" role="alert">
-                        <h5>Erros encontrados:</h5>
-                        <ul class="mb-0">
-                            {% for erro in erros %}
-                            <li>{{ erro }}</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    {% endif %}
-
-                    <form method="post" class="needs-validation" novalidate>
-                        {% csrf_token %}
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="username" class="form-label">Nome de Usuário</label>
-                                <input type="text" class="form-control" id="username" 
-                                       value="{{ usuario.username }}" disabled>
-                                <small class="form-text text-muted">Não é possível alterar o nome de usuário</small>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="email" class="form-label">Email *</label>
-                                <input type="email" class="form-control" id="email" name="email" 
-                                       value="{{ usuario.email }}" required>
-                                <div class="invalid-feedback">
-                                    Email válido é obrigatório.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="first_name" class="form-label">Primeiro Nome</label>
-                                <input type="text" class="form-control" id="first_name" name="first_name" 
-                                       value="{{ usuario.first_name }}">
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="last_name" class="form-label">Sobrenome</label>
-                                <input type="text" class="form-control" id="last_name" name="last_name" 
-                                       value="{{ usuario.last_name }}">
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="grupo" class="form-label">Grupo/Função *</label>
-                                <select class="form-select" id="grupo" name="grupo" required>
-                                    <option value="">Selecione um grupo...</option>
-                                    {% for grupo in grupos_disponiveis %}
-                                    <option value="{{ grupo.name }}" 
-                                            {% if grupo.name == grupo_atual %}selected{% endif %}>
-                                        {{ grupo.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                                <div class="invalid-feedback">
-                                    Selecione um grupo para o usuário.
-                                </div>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <div class="form-check mt-4">
-                                    <input class="form-check-input" type="checkbox" id="ativo" name="ativo" 
-                                           {% if usuario.is_active %}checked{% endif %}>
-                                    <label class="form-check-label" for="ativo">
-                                        Usuário Ativo
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <hr>
-
-                        <div class="mb-3">
-                            <p class="text-muted">
-                                <strong>Informações do Sistema:</strong><br>
-                                Data de Criação: {{ usuario.date_joined|date:"d/m/Y H:i" }}<br>
-                                Último Acesso: {% if usuario.last_login %}{{ usuario.last_login|date:"d/m/Y H:i" }}{% else %}Nunca acessou{% endif %}
-                            </p>
-                        </div>
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">Atualizar Usuário</button>
-                            <a href="{% url 'core:usuarios' %}" class="btn btn-secondary">Cancelar</a>
-                        </div>
-                    </form>
+                <div>
+                    <label class="form-label">Sobrenome</label>
+                    <input type="text" class="form-control" name="last_name" value="{{ usuario.last_name }}">
                 </div>
             </div>
-        </div>
+
+            <!-- Grupo e Status -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div>
+                    <label class="form-label">Grupo/Função *</label>
+                    <select class="form-select" name="grupo" required>
+                        <option value="">Selecione um grupo...</option>
+                        {% for grupo in grupos_disponiveis %}
+                        <option value="{{ grupo.name }}" {% if grupo.name == grupo_atual %}selected{% endif %}>
+                            {{ grupo.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="ativo" name="ativo" {% if usuario.is_active %}checked{% endif %}
+                           style="width: 1.25rem; height: 1.25rem; cursor: pointer;">
+                    <label for="ativo" class="form-check-label" style="cursor: pointer; color: #0f172a; font-weight: 500;">
+                        Usuário Ativo
+                    </label>
+                </div>
+            </div>
+
+            <!-- Info Sistema -->
+            <div class="card card-body bg-light">
+                <h5 style="margin-bottom: 1rem;">
+                    <i class="bi bi-clock-history"></i> Informações do Sistema
+                </h5>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; color: #64748b; font-size: 0.95rem;">
+                    <div>
+                        <small>Data de Criação</small>
+                        <strong style="color: #0f172a;">{{ usuario.date_joined|date:"d/m/Y H:i" }}</strong>
+                    </div>
+                    <div>
+                        <small>Último Acesso</small>
+                        <strong style="color: #0f172a;">
+                            {% if usuario.last_login %}
+                                {{ usuario.last_login|date:"d/m/Y H:i" }}
+                            {% else %}
+                                <span style="color: #d97706;">Nunca acessou</span>
+                            {% endif %}
+                        </strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Atualizar Usuário
+                </button>
+                <a href="{% url 'core:usuarios' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </a>
+            </div>
+        </form>
     </div>
 </div>
 
+<!-- Script de validação -->
 <script>
-    // Validação do formulário
-    (() => {
-        'use strict'
-        const forms = document.querySelectorAll('.needs-validation')
-        Array.from(forms).forEach(form => {
-            form.addEventListener('submit', event => {
-                if (!form.checkValidity()) {
-                    event.preventDefault()
-                    event.stopPropagation()
-                }
-                form.classList.add('was-validated')
-            }, false)
-        })
-    })()
+(() => {
+    'use strict'
+    const forms = document.querySelectorAll('.needs-validation')
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+        }, false)
+    })
+})()
 </script>
+
 {% endblock %}

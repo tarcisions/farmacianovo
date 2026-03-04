@@ -1,47 +1,47 @@
 from django.urls import path
-from . import views
+from . import views, views_formulas
 
 app_name = 'dashboard'
 
 urlpatterns = [
+    # ============ DASHBOARDS ============
     path('', views.home, name='home'),
     path('funcionario/', views.dashboard_funcionario, name='funcionario'),
     path('gerente/', views.dashboard_gerente, name='gerente'),
     path('superadmin/', views.dashboard_superadmin, name='superadmin'),
+    
+    # ============ LISTA DE PEDIDOS MESTRES ============
     path('pedidos/', views.lista_pedidos, name='pedidos'),
     
-    # URLs de funcionário
-    path('meus-pedidos/', views.meus_pedidos_funcionario, name='meus_pedidos'),
-    path('pedidos-disponiveis/', views.pedidos_disponiveis_funcionario, name='pedidos_disponiveis'),
-    path('assumir-pedido/<int:pedido_id>/', views.assumir_pedido, name='assumir_pedido'),
-    path('trabalhar-pedido/<int:pedido_id>/', views.trabalhar_pedido, name='trabalhar_pedido'),
-    path('selecionar-rota/<int:pedido_id>/<str:tipo_rota>/', views.selecionar_rota_expedicao, name='selecionar_rota'),
-    path('toggle-status-fila/<int:pedido_id>/', views.toggle_status_fila, name='toggle_status_fila'),
-    path('marcar-checklist/<int:execucao_id>/', views.marcar_checklist, name='marcar_checklist'),
-    path('concluir-etapa/<int:pedido_id>/', views.concluir_etapa, name='concluir_etapa'),
-    path('expedicao-motoboy/', views.expedicao_motoboy, name='expedicao_motoboy'),
-    path('expedicao-sedex/', views.expedicao_sedex, name='expedicao_sedex'),
-
-    # Rotas finalizadas (expedição)
-    path('rotas-finalizadas/', views.rotas_finalizadas_funcionario, name='rotas_finalizadas'),
-    path('rotas-finalizadas/<int:historico_id>/', views.detalhe_rota_finalizada, name='detalhe_rota_finalizada'),
-    path('rotas-finalizadas/gerente/', views.rotas_finalizadas_gerente, name='rotas_finalizadas_gerente'),
+    # ============ NOVO FLUXO COM MÚLTIPLAS FÓRMULAS ============
+    # Fórmulas disponíveis e trabalho do funcionário
+    path('formulas-disponiveis/', views_formulas.formulas_disponiveis, name='formulas_disponiveis'),
+    path('minhas-formulas/', views_formulas.minhas_formulas, name='minhas_formulas'),
+    path('assumir-formula/<int:formula_id>/', views_formulas.assumir_formula, name='assumir_formula'),
+    path('pausar-tarefa/<int:formula_id>/', views_formulas.pausar_tarefa_formula, name='pausar_tarefa'),
+    path('ativar-tarefa/<int:formula_id>/', views_formulas.ativar_tarefa_formula, name='ativar_tarefa'),
+    path('formula/<int:formula_id>/', views_formulas.detalhe_formula, name='detalhe_formula'),
+    path('formula/<int:formula_id>/historico/', views_formulas.historico_etapas_formula, name='historico_etapas'),
+    path('formula/<int:formula_id>/marcar-checklist/<int:checklist_id>/', views_formulas.marcar_checklist_formula, name='marcar_checklist_formula'),
+    path('formula/<int:formula_id>/finalizar/', views_formulas.finalizar_etapa_formula, name='finalizar_etapa_formula'),
     
-    # Histórico de etapas e pedidos concluídos
-    path('historico-etapas/', views.historico_etapas_funcionario, name='historico_etapas'),
-    path('pedidos-concluidos/', views.pedidos_concluidos, name='pedidos_concluidos'),
+    # Expedição (Rotas Unificadas)
+    path('pedido/<int:pedido_id>/escolher-rota/<str:rota_tipo>/', views_formulas.pedido_escolher_rota, name='pedido_escolher_rota'),
+    path('rotas/', views_formulas.rotas_unificada, name='rotas_unificada'),
+    path('rotas/finalizar/<str:rota_tipo>/', views_formulas.finalizar_rota, name='finalizar_rota'),
+    path('rotas/expedicao/<int:expedicao_id>/', views_formulas.expedicao_detalhes, name='expedicao_detalhes'),
     
-    # Controle de Qualidade (sem vinculação com pedidos)
+    # ============ TRANSPARENTE - OUTRAS FUNCIONALIDADES ============
+    # Controle de Qualidade
     path('controle-qualidade/', views.controle_qualidade, name='controle_qualidade'),
     path('controle-qualidade/novo/', views.controle_qualidade_formulario, name='controle_qualidade_novo'),
     path('controle-qualidade/<int:formulario_id>/', views.controle_qualidade_detalhe, name='controle_qualidade_detalhe'),
     
-    # Perfil e lista de funcionários
-    path('perfil-funcionario/', views.perfil_funcionario, name='perfil_funcionario'),
+    # Funcionários e Perfis
     path('perfil-funcionario/<int:user_id>/', views.perfil_funcionario, name='perfil_funcionario_outro'),
     path('funcionarios/', views.lista_funcionarios, name='lista_funcionarios'),
     
-    # Exportação de relatórios
+    # Relatórios e Exportação
     path('exportar-relatorio-gerente/', views.exportar_relatorio_gerente, name='exportar_relatorio_gerente'),
     path('exportar-relatorio-superadmin/', views.exportar_relatorio_superadmin, name='exportar_relatorio_superadmin'),
     
@@ -53,3 +53,4 @@ urlpatterns = [
     # Auditoria
     path('auditoria/', views.auditoria, name='auditoria'),
 ]
+

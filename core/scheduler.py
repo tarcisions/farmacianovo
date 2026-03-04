@@ -12,7 +12,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from django.conf import settings
 from django.db import IntegrityError
 from django.utils import timezone
-from core.models import Pedido, Etapa, TipoProduto, ConfiguracaoAPI, AgendamentoSincronizacao
+from django.core.management import call_command
+from core.models import PedidoMestre, FormulaItem, Etapa, TipoProduto, ConfiguracaoAPI, AgendamentoSincronizacao
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,10 @@ def extrair_quantidade_produto(descricao_web):
 
 
 def processar_e_salvar_pedidos(dados_api):
-    """Processa dados da API e salva no banco de dados - apenas atualiza se houve mudanças"""
+    """
+    Processa dados da API e salva no banco usando PedidoMestre e FormulaItem
+    Agrupa por NRORC: cada NRORC = PedidoMestre, cada item diferente = FormulaItem
+    """
     if not dados_api or 'dados' not in dados_api:
         return {'criados': 0, 'atualizados': 0, 'sem_mudancas': 0, 'erros': 0}
     
@@ -96,129 +100,127 @@ def processar_e_salvar_pedidos(dados_api):
     
     try:
         # Obter etapa padrão (triagem)
-        etapa_atual = Etapa.objects.filter(grupo='triagem').first()
-        if not etapa_atual:
-            etapa_atual = Etapa.objects.first()
+        etapa_inicial = Etapa.objects.filter(sequencia=1, ativa=True).first()
+        if not etapa_inicial:
+            etapa_inicial = Etapa.objects.filter(ativa=True).order_by('sequencia').first()
     except:
-        etapa_atual = None
+        etapa_inicial = None
     
+    # Agrupar dados por NRORC
+    pedidos_por_nrorc = {}
     for item in dados_api.get('dados', []):
+        nrorc = item.get('NRORC')
+        if nrorc:
+            if nrorc not in pedidos_por_nrorc:
+                pedidos_por_nrorc[nrorc] = []
+            pedidos_por_nrorc[nrorc].append(item)
+    
+    # Processar cada grupo NRORC (cada um é um PedidoMestre)
+    for nrorc, items in pedidos_por_nrorc.items():
         try:
-            nrorc = item.get('NRORC')  # NRORC vindo da API
-            serieo = str(item.get('SERIEO', 'SEM_SERIE')).strip() if item.get('SERIEO') else 'SEM_SERIE'
-            descricao = item.get('DESCRICAOWEB', '')
-            quantidade = item.get('QUANT', 0)
-            pruni = item.get('PRUNI')
-            vrtot = item.get('VRTOT')
-            dtalt = item.get('DTALT')
-            hralt = item.get('HRALT')
+            # Criar ou obter PedidoMestre
+            pedido_mestre, pm_created = PedidoMestre.objects.get_or_create(
+                nrorc=nrorc,
+                defaults={'status': 'em_processamento'}
+            )
             
-            # Validar se NRORC existe
-            if not nrorc:
-                logger.warning(f'Item sem NRORC: {item}')
-                erros += 1
-                continue
-            
-            # Montar id_api combinando NRORC-SERIEO
-            id_api_combinado = f'{nrorc}-{serieo}'
-            
-            # Tentar extrair quantidade da descrição (cápsulas/envelopes)
-            quantidade_extraida = extrair_quantidade_produto(descricao)
-            if quantidade_extraida is not None:
-                quantidade = quantidade_extraida
-            
-            # Gerar código do pedido
-            codigo_pedido = f'NRORC_{nrorc}'
-            
-            # Extrair tipo de produto
-            tipo_produto, tipo_identificado = extrair_tipo_produto(descricao)
-            
-            # Verificar se já existe
-            pedido_existente = Pedido.objects.filter(nrorc=nrorc).first()
-            
-            if pedido_existente:
-                # Verificar se houve mudanças
-                houve_mudanca = False
-                
-                # Preparar valores para comparação
-                novo_nome = descricao[:200] if descricao else f'Pedido {nrorc}'
-                novo_price_unit = Decimal(str(pruni)) if pruni else None
-                novo_price_total = Decimal(str(vrtot)) if vrtot else None
-                
-                # Comparar cada campo individualmente
-                if pedido_existente.nome != novo_nome:
-                    houve_mudanca = True
-                elif pedido_existente.quantidade != quantidade:
-                    houve_mudanca = True
-                elif pedido_existente.descricao_web != descricao:
-                    houve_mudanca = True
-                elif pedido_existente.price_unit != novo_price_unit:
-                    houve_mudanca = True
-                elif pedido_existente.price_total != novo_price_total:
-                    houve_mudanca = True
-                elif pedido_existente.tipo_identificado != tipo_identificado:
-                    houve_mudanca = True
-                elif pedido_existente.serieo != serieo:
-                    houve_mudanca = True
-                elif dtalt and str(pedido_existente.data_atualizacao_api) != str(dtalt):
-                    houve_mudanca = True
-                elif hralt and str(pedido_existente.hora_atualizacao_api) != str(hralt):
-                    houve_mudanca = True
-                elif tipo_produto and pedido_existente.tipo != tipo_produto:
-                    houve_mudanca = True
-                
-                if houve_mudanca:
-                    # Atualizar apenas se houve mudança
-                    pedido_existente.nome = novo_nome
-                    pedido_existente.quantidade = quantidade
-                    pedido_existente.descricao_web = descricao
-                    pedido_existente.serieo = serieo
-                    pedido_existente.id_api = id_api_combinado
-                    pedido_existente.price_unit = novo_price_unit
-                    pedido_existente.price_total = novo_price_total
-                    pedido_existente.tipo_identificado = tipo_identificado
-                    if dtalt:
-                        pedido_existente.data_atualizacao_api = dtalt
-                    if hralt:
-                        pedido_existente.hora_atualizacao_api = hralt
-                    if tipo_produto:
-                        pedido_existente.tipo = tipo_produto
-                    pedido_existente.save()
-                    atualizados += 1
-                else:
-                    # Nenhuma mudança detectada
-                    sem_mudancas += 1
-                
-            else:
-                # Criar novo
-                Pedido.objects.create(
-                    nrorc=nrorc,
-                    serieo=serieo,
-                    id_api=id_api_combinado,
-                    codigo_pedido=codigo_pedido,
-                    nome=descricao[:200] if descricao else f'Pedido {nrorc}',
-                    quantidade=quantidade,
-                    descricao_web=descricao,
-                    price_unit=Decimal(str(pruni)) if pruni else None,
-                    price_total=Decimal(str(vrtot)) if vrtot else None,
-                    data_atualizacao_api=dtalt if dtalt else None,
-                    hora_atualizacao_api=hralt if hralt else None,
-                    tipo_identificado=tipo_identificado,
-                    tipo=tipo_produto,
-                    etapa_atual=etapa_atual,
-                    status='em_fluxo',
-                )
+            if pm_created:
                 criados += 1
+            
+            # Processar cada fórmula (item) deste NRORC
+            for item in items:
+                try:
+                    id_api = item.get('ID')
+                    if not id_api:
+                        continue
+                    
+                    descricao = item.get('DESCRICAOWEB', '')
+                    quantidade = item.get('QUANT', 1)
+                    serieo = item.get('SERIEO', '')
+                    pruni = item.get('PRUNI')
+                    vrtot = item.get('VRTOT')
+                    dtalt = item.get('DTALT')
+                    hralt = item.get('HRALT')
+                    
+                    # Extrair volume (ex: "10ML")
+                    volume_ml = extrair_volume(descricao) if descricao else None
+                    
+                    # Extrair tipo de produto
+                    tipo_produto, tipo_identificado = extrair_tipo_produto(descricao)
+                    
+                    # Obter ou criar FormulaItem
+                    formula, formula_created = FormulaItem.objects.get_or_create(
+                        id_api=str(id_api),
+                        defaults={
+                            'pedido_mestre': pedido_mestre,
+                            'descricao': descricao[:200] if descricao else f'Formula {id_api}',
+                            'quantidade': quantidade,
+                            'volume_ml': volume_ml or '',
+                            'serieo': serieo,
+                            'price_unit': Decimal(str(pruni)) if pruni else None,
+                            'price_total': Decimal(str(vrtot)) if vrtot else None,
+                            'status': 'em_triagem',
+                            'etapa_atual': etapa_inicial,
+                        }
+                    )
+                    
+                    if formula_created:
+                        criados += 1
+                    else:
+                        # Verificar se houve mudanças
+                        houve_mudanca = False
+                        novo_descricao = descricao[:200] if descricao else formula.descricao
+                        novo_price_unit = Decimal(str(pruni)) if pruni else None
+                        novo_price_total = Decimal(str(vrtot)) if vrtot else None
+                        
+                        if formula.descricao != novo_descricao:
+                            houve_mudanca = True
+                        elif formula.quantidade != quantidade:
+                            houve_mudanca = True
+                        elif formula.price_unit != novo_price_unit:
+                            houve_mudanca = True
+                        elif formula.price_total != novo_price_total:
+                            houve_mudanca = True
+                        elif formula.serieo != serieo:
+                            houve_mudanca = True
+                        
+                        if houve_mudanca:
+                            formula.descricao = novo_descricao
+                            formula.quantidade = quantidade
+                            formula.volume_ml = volume_ml or formula.volume_ml
+                            formula.serieo = serieo
+                            formula.price_unit = novo_price_unit
+                            formula.price_total = novo_price_total
+                            formula.save()
+                            atualizados += 1
+                        else:
+                            sem_mudancas += 1
                 
-        except IntegrityError as e:
-            logger.warning(f'Registro duplicado ID {id_api_combinado}: {str(e)[:80]}')
-            erros += 1
+                except IntegrityError as e:
+                    logger.warning(f'Registro duplicado ID {id_api}: {str(e)[:80]}')
+                    erros += 1
+                except Exception as e:
+                    logger.error(f'Erro ao processar formula {id_api}: {str(e)}')
+                    erros += 1
+        
         except Exception as e:
-            logger.error(f'Erro ao processar item ID {id_api_combinado}: {str(e)}')
+            logger.error(f'Erro ao processar NRORC {nrorc}: {str(e)}')
             erros += 1
     
-    logger.info(f'[PROCESSAMENTO] Pedidos: {criados} criados, {atualizados} atualizados, {sem_mudancas} sem mudanças, {erros} erros')
+    logger.info(f'[PROCESSAMENTO] Pedidos: {criados} criados, {atualizados} atualizados, {sem_mudancas} sem mudancas, {erros} erros')
     return {'criados': criados, 'atualizados': atualizados, 'sem_mudancas': sem_mudancas, 'erros': erros}
+
+
+def extrair_volume(descricao):
+    """Extrai o volume em ML da descrição (ex: '10ML' from 'VITAMINA A + TCM | 10ML')"""
+    if not descricao:
+        return None
+    
+    match = re.search(r'(\d+)\s*ML', descricao.upper())
+    if match:
+        return f"{match.group(1)}ML"
+    
+    return None
 
 
 logger = logging.getLogger(__name__)
@@ -385,6 +387,8 @@ class AgendadorSincronizacao:
                     logger.info(f"[JOB] Agendado '{agendamento.nome}' para {', '.join(agendamento.dias_semana)} às {horario.strftime('%H:%M')}")
         except Exception as e:
             logger.error(f"[ERRO] Falha ao adicionar job para agendamento {agendamento.id}: {str(e)}")
+
+
     
     @classmethod
     def parar(cls):

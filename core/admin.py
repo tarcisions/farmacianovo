@@ -2,15 +2,15 @@ from django.contrib import admin
 from .models import (
     Etapa, Laboratorio, TipoProduto, PontuacaoPorAtividade,
     ConfiguracaoPontuacao, Checklist,
-    Pedido, HistoricoEtapa, ChecklistExecucao,
     PontuacaoFuncionario, Penalizacao,
-    PontuacaoFixaMensal, HistoricoAplicacaoPontuacaoFixa,
+    PontuacaoFixaMensal,
     BonusFaixa, HistoricoBonusMensal,
     ConfiguracaoExpedicao, RegistroExpedicao,
     LogAuditoria,
     ControlePergunta, ControlePerguntaOpcao, HistoricoControleQualidade, RespostaControleQualidade,
     ConfiguracaoControleQualidade,
-    ConfiguracaoAPI, AgendamentoSincronizacao
+    ConfiguracaoAPI, AgendamentoSincronizacao,
+    PedidoMestre, FormulaItem, HistoricoEtapaFormula, ChecklistExecucaoFormula
 )
 
 @admin.register(Etapa)
@@ -50,51 +50,6 @@ class ChecklistAdmin(admin.ModelAdmin):
     list_filter = ['etapa', 'obrigatorio', 'ativo']
     search_fields = ['nome', 'descricao']
 
-@admin.register(Pedido)
-class PedidoAdmin(admin.ModelAdmin):
-    list_display = ['nrorc', 'serieo', 'nome_resumido', 'tipo', 'quantidade', 'status', 'etapa_atual', 'criado_em']
-    list_filter = ['status', 'tipo', 'etapa_atual', 'tipo_identificado']
-    search_fields = ['nrorc', 'serieo', 'nome', 'descricao_web']
-    date_hierarchy = 'criado_em'
-    readonly_fields = ['id_api', 'descricao_web', 'price_unit', 'price_total', 'data_atualizacao_api', 'tipo_identificado', 'criado_em', 'atualizado_em']
-    
-    fieldsets = (
-        ('IDs da API (Somente Leitura)', {
-            'fields': ('nrorc', 'serieo', 'id_api')
-        }),
-        ('Informações do Produto', {
-            'fields': ('nome', 'descricao_web', 'tipo', 'quantidade')
-        }),
-        ('Preço', {
-            'fields': ('price_unit', 'price_total')
-        }),
-        ('Fluxo', {
-            'fields': ('etapa_atual', 'status', 'funcionario_na_etapa')
-        }),
-        ('Tipo Identificado', {
-            'fields': ('tipo_identificado',)
-        }),
-        ('Histórico', {
-            'fields': ('data_atualizacao_api', 'informacoes_gerais', 'criado_em', 'atualizado_em', 'concluido_em')
-        }),
-    )
-    
-    def nome_resumido(self, obj):
-        return obj.nome[:50] if obj.nome else "N/A"
-    nome_resumido.short_description = "Nome"
-
-@admin.register(HistoricoEtapa)
-class HistoricoEtapaAdmin(admin.ModelAdmin):
-    list_display = ['pedido', 'etapa', 'funcionario', 'timestamp_inicio', 'timestamp_fim', 'pontos_gerados']
-    list_filter = ['etapa', 'funcionario']
-    search_fields = ['pedido__nome']
-    date_hierarchy = 'timestamp_inicio'
-
-@admin.register(ChecklistExecucao)
-class ChecklistExecucaoAdmin(admin.ModelAdmin):
-    list_display = ['checklist', 'historico_etapa', 'marcado', 'pontos_gerados']
-    list_filter = ['marcado', 'checklist']
-
 @admin.register(PontuacaoFuncionario)
 class PontuacaoFuncionarioAdmin(admin.ModelAdmin):
     list_display = ['funcionario', 'pontos', 'origem', 'timestamp', 'mes_referencia']
@@ -114,12 +69,6 @@ class PontuacaoFixaMensalAdmin(admin.ModelAdmin):
     list_display = ['nome_regra', 'valor', 'tipo_aplicacao', 'ativa']
     list_filter = ['tipo_aplicacao', 'ativa']
     search_fields = ['nome_regra']
-
-@admin.register(HistoricoAplicacaoPontuacaoFixa)
-class HistoricoAplicacaoPontuacaoFixaAdmin(admin.ModelAdmin):
-    list_display = ['regra', 'funcionario', 'mes_referencia', 'pontos_aplicados', 'aplicado_por']
-    list_filter = ['regra', 'funcionario']
-    date_hierarchy = 'aplicado_em'
 
 @admin.register(BonusFaixa)
 class BonusFaixaAdmin(admin.ModelAdmin):
@@ -141,7 +90,7 @@ class ConfiguracaoExpedicaoAdmin(admin.ModelAdmin):
 
 @admin.register(RegistroExpedicao)
 class RegistroExpedicaoAdmin(admin.ModelAdmin):
-    list_display = ['funcionario', 'configuracao', 'pedido', 'data', 'pontos_gerados']
+    list_display = ['funcionario', 'configuracao', 'data', 'pontos_gerados']
     list_filter = ['configuracao', 'funcionario']
     search_fields = ['funcionario__username']
     date_hierarchy = 'data'
@@ -282,6 +231,7 @@ class AgendamentoSincronizacaoAdmin(admin.ModelAdmin):
     list_filter = ['api', 'ativo', 'executar_todos_os_dias']
     search_fields = ['api__nome', 'nome', 'descricao']
     readonly_fields = ['criado_em', 'atualizado_em']
+    actions = ['recarregar_scheduler', 'sincronizar_agora']
     
     fieldsets = (
         ('API e Agendamento', {
@@ -299,5 +249,111 @@ class AgendamentoSincronizacaoAdmin(admin.ModelAdmin):
         }),
         ('Status', {
             'fields': ('ativo', 'criado_em', 'atualizado_em')
+        }),
+    )
+    
+    def recarregar_scheduler(self, request, queryset):
+        """Recarrega o scheduler para ativar mudanças nos agendamentos"""
+        try:
+            from core.scheduler import AgendadorSincronizacao
+            AgendadorSincronizacao.recarregar_agendamentos()
+            self.message_user(request, "[OK] Scheduler recarregado com sucesso! Novos agendamentos estao em vigor.")
+        except Exception as e:
+            self.message_user(request, f"[ERRO] Falha ao recarregar scheduler: {str(e)}", level=admin.messages.ERROR)
+    recarregar_scheduler.short_description = "[>>] Recarregar scheduler com novos agendamentos"
+    
+    def sincronizar_agora(self, request, queryset):
+        """Sincroniza imediatamente os agendamentos selecionados"""
+        try:
+            from core.scheduler import AgendadorSincronizacao
+            for agendamento in queryset:
+                AgendadorSincronizacao.sincronizar_agora(agendamento.id)
+            self.message_user(request, f"[OK] Sincronizacao iniciada para {queryset.count()} agendamento(s)!")
+        except Exception as e:
+            self.message_user(request, f"[ERRO] Falha na sincronizacao: {str(e)}", level=admin.messages.ERROR)
+    sincronizar_agora.short_description = "[>>] Sincronizar agora"
+
+
+# ========== ADMIN PARA NOVOS MODELOS ==========
+
+@admin.register(PedidoMestre)
+class PedidoMestreAdmin(admin.ModelAdmin):
+    list_display = ['nrorc', 'status', 'total_formulas', 'formulas_prontas', 'criado_em']
+    list_filter = ['status', 'criado_em']
+    search_fields = ['nrorc']
+    readonly_fields = ['criado_em', 'atualizado_em', 'concluido_em', 'total_formulas', 'formulas_prontas']
+    
+    fieldsets = (
+        ('Informacoes Basicas', {
+            'fields': ('nrorc', 'status')
+        }),
+        ('Formulas', {
+            'fields': ('total_formulas', 'formulas_prontas')
+        }),
+        ('Observacoes', {
+            'fields': ('observacoes',)
+        }),
+        ('Datas', {
+            'fields': ('criado_em', 'atualizado_em', 'concluido_em')
+        }),
+    )
+
+
+@admin.register(FormulaItem)
+class FormulaItemAdmin(admin.ModelAdmin):
+    list_display = ['pedido_mestre', 'status', 'etapa_atual', 'funcionario_na_etapa', 'criado_em', 'datetime_atualizacao_api']
+    list_filter = ['status', 'etapa_atual', 'criado_em', 'datetime_atualizacao_api']
+    search_fields = ['pedido_mestre__nrorc', 'descricao', 'id_api']
+    readonly_fields = ['criado_em', 'atualizado_em', 'concluido_em', 'id_api', 'datetime_atualizacao_api']
+    
+    fieldsets = (
+        ('Pedido e Formula', {
+            'fields': ('pedido_mestre', 'descricao', 'volume_ml', 'quantidade')
+        }),
+        ('Dados da API', {
+            'fields': ('id_api', 'serieo', 'price_unit', 'price_total', 'data_criacao_api', 'data_atualizacao_api', 'datetime_atualizacao_api')
+        }),
+        ('Status e Fluxo', {
+            'fields': ('status', 'etapa_atual', 'funcionario_na_etapa')
+        }),
+        ('Datas', {
+            'fields': ('criado_em', 'atualizado_em', 'concluido_em')
+        }),
+    )
+
+
+@admin.register(HistoricoEtapaFormula)
+class HistoricoEtapaFormulaAdmin(admin.ModelAdmin):
+    list_display = ['formula', 'etapa', 'funcionario', 'timestamp_inicio', 'tempo_gasto_minutos', 'pontos_gerados']
+    list_filter = ['etapa', 'timestamp_inicio']
+    search_fields = ['formula__pedido_mestre__nrorc', 'funcionario__username']
+    readonly_fields = ['timestamp_inicio', 'tempo_gasto_formatado', 'tempo_gasto_minutos']
+    
+    fieldsets = (
+        ('Formula e Etapa', {
+            'fields': ('formula', 'etapa', 'funcionario')
+        }),
+        ('Timeline', {
+            'fields': ('timestamp_inicio', 'timestamp_fim', 'tempo_gasto_formatado', 'tempo_gasto_minutos')
+        }),
+        ('Pontuacao e Outros', {
+            'fields': ('pontos_gerados', 'rota_tipo', 'observacoes')
+        }),
+    )
+
+
+@admin.register(ChecklistExecucaoFormula)
+class ChecklistExecucaoFormulaAdmin(admin.ModelAdmin):
+    list_display = ['checklist', 'historico_etapa', 'marcado', 'pontos_gerados', 'marcado_em']
+    list_filter = ['historico_etapa__etapa', 'marcado']
+    search_fields = ['checklist__nome', 'historico_etapa__formula__pedido_mestre__nrorc']
+    readonly_fields = ['marcado_em']
+    
+    fieldsets = (
+        ('Checklist', {
+            'fields': ('historico_etapa', 'checklist')
+        }),
+        ('Status e Pontos', {
+            'fields': ('marcado', 'pontos_gerados', 'marcado_em')
         }),
     )

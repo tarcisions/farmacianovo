@@ -1,6 +1,54 @@
-# Sistema de Produção Gamificada
+# 📊 Sistema de Produção Gamificada
 
-Sistema web completo de gestão de produção com gamificação para funcionários, desenvolvido com Django, WebSockets (Channels) e gamificação.
+**Sistema web completo de gestão de produção para farmácias de manipulação**, com fluxo de trabalho automatizado, sincronização de API e sistema de gamificação para motivar funcionários.
+
+**Tecnologias:** Django 4.x, PostgreSQL, WebSockets (Channels), APScheduler, Bootstrap 5
+
+📖 **Para uma visão completa das funcionalidades, veja [APRESENTACAO_CLIENTE.md](APRESENTACAO_CLIENTE.md)**
+
+## 🎯 O que é?
+
+O sistema faz:
+
+✅ **Sincroniza pedidos** da API externa automaticamente (2x ao dia às 11:29 e 21:00)  
+✅ **Fluxo completo** de produção: Triagem → Produção → Rotulagem → Conferência → Expedição  
+✅ **Gamificação** com pontos por atividade, bônus em dinheiro por faixas de desempenho  
+✅ **Validação automática** com checklists obrigatórios antes de avançar etapa  
+✅ **Controle de Qualidade** independente com formulários customizáveis  
+✅ **Rastreamento completo** de cada fórmula e funcionário  
+✅ **WebSockets** para notificações em tempo real  
+✅ **APScheduler** para sincronizações automáticas  
+
+---
+
+## 🎮 Sistema de Pontuação
+
+O sistema oferece três mecanismos de incentivo:
+
+### 1️⃣ **Pontuação por Atividade** (Modelo PontuacaoPorAtividade)
+Pontos automáticos por completar etapas, baseado em:
+- **Atividade** (etapa do fluxo)
+- **Produto** (fórmula específica)
+- **Faixa de Quantidade** (até 100, 101-500, 500+)
+
+Cada combinação pode ter pontuação diferente.
+
+### 2️⃣ **Bônus em Dinheiro** (BonusFaixa)
+Bônus **fixo e mensal** por faixa de desempenho:
+- Até 400 pts: R$ 0
+- 401-600 pts: R$ 150
+- 601-900 pts: R$ 300
+- 901-1200 pts: R$ 500
+- 1201+ pts: R$ 800
+
+### 3️⃣ **Pontuação Fixa Mensal** (PontuacaoFixaMensal)
+- **Automática**: Por cada etapa concluída
+- **Manual**: Gerenciador pode dar pontos extras ou penalidades com justificativa
+
+### ❌ Penalizações (Penalizacao)
+Aplicadas **manualmente** pelo gerente com motivo de justificativa.
+
+---
 
 ## 📋 Requisitos
 
@@ -100,6 +148,24 @@ python manage.py runserver
 # Ou com Daphne (para WebSockets)
 daphne -b 0.0.0.0 -p 8000 producao_gamificada.asgi:application
 ```
+
+### 10. Sincronize com a API Externa (Uma vez)
+
+```bash
+python manage.py sincronizar_formulas_api
+```
+
+Este comando:
+- ✅ Busca todos os pedidos da API externa
+- ✅ Cria/atualiza fórmulas e itens
+- ✅ Sincroniza datas e horas (DTALT + HRALT) em `datetime_atualizacao_api`
+- ✅ Ordena formulas por data mais recente primeiro
+
+**Após iniciar o servidor, a sincronização ocorre automaticamente:**
+- 🔄 Diariamente às **11:29** da manhã
+- 🔄 Diariamente às **21:00** da noite
+
+Configure em: `core/scheduler.py` se precisar mudar os horários.
 
 ---
 
@@ -352,25 +418,51 @@ projeto_export/
 ## 🎮 Funcionalidades
 
 ### Para Funcionários
-- Assumir e trabalhar em pedidos
-- Completar checklists
-- Registrar produções
-- Registrar expedições (Sedex e Motoboy)
-- Visualizar pontuação e histórico
+- ✅ Assumir pedidos disponíveis automaticamente sincronizados
+- ✅ Avançar entre etapas: Triagem → Produção → Rotulagem → Conferência → Expedição
+- ✅ Completar checklists obrigatórios antes de avançar
+- ✅ Responder perguntas de Controle de Qualidade quando necessário
+- ✅ Visualizar pontuação em tempo real no painel
+- ✅ Histórico de toda produção realizada
 
 ### Para Gerentes
-- Dashboard com métricas de produção
-- Ranking de funcionários
-- Gestão de penalizações
-- Relatórios exportáveis
+- ✅ Dashboard visual com métricas de produção
+- ✅ Ranking em tempo real de funcionários por pontuação mensal
+- ✅ Visualização de fórmulas em cada etapa do workflow
+- ✅ Aplicar penalizações manuais com justificativa
+- ✅ Relatórios de desempenho e pontuação
+- ✅ Gerenciar configurações de pontuação e checklists
 
 ### Para Superadmins
-- Todas as funcionalidades
-- Gestão de usuários
-- Configuração de etapas
-- Configuração de pontuações e bônus
+- ✅ Todas as funcionalidades de gerentes
+- ✅ Gerenciamento completo de usuários
+- ✅ Configuração de etapas do workflow
+- ✅ Definição de pontos por atividade e faixa de quantidade
+- ✅ Configuração de faixas de bônus em dinheiro
+- ✅ Gestão de perguntas e respostas de QC
+- ✅ Acesso ao painel administrativo Django
 
-## 🔐 Primeiro Acesso
+## � Sincronização Automática com API
+
+O sistema sincroniza automaticamente com a API externa usando **APScheduler**:
+
+| Horário | Tarefa |
+|---------|--------|
+| 11:29 | Sincroniza pedidos, prices, quantidades, datas e horas |
+| 21:00 | Sincroniza novamente para manter dados atualizados |
+
+**Dados sincronizados da API:**
+- `DTALT` + `HRALT` → Combinados em `datetime_atualizacao_api` (com índice para performance)
+- `QUANT` → Quantidade do item
+- `PRUNI` → Preço unitário
+- `VRTOT` → Valor total
+- `DESCRICAOWEB` → Descrição para exibição
+
+**Localização do agendador:** `core/scheduler.py`
+
+---
+
+## �🔐 Primeiro Acesso
 
 1. Acesse: http://127.0.0.1:8000/admin
 2. Faça login com o superusuário criado
@@ -393,6 +485,9 @@ python manage.py makemigrations
 # Coletar arquivos estáticos
 python manage.py collectstatic
 
+# Sincronizar com API externa (manual)
+python manage.py sincronizar_formulas_api
+
 # Criar pedidos de teste
 python manage.py criar_pedidos_teste
 
@@ -401,6 +496,9 @@ python manage.py test
 
 # Shell interativo do Django
 python manage.py shell
+
+# Limpar dados temporários
+python manage.py limpar_formulas --confirmar
 ```
 
 ## 🐛 Troubleshooting
@@ -426,11 +524,14 @@ python manage.py runserver 8080
 
 ## 📝 Notas Importantes
 
+- ✅ **APScheduler está ativo** - A sincronização com API ocorre automaticamente 2x por dia
+- Se precisar sincronizar manualmente: `python manage.py sincronizar_formulas_api`
 - O banco de dados SQLite já vem com dados de exemplo se você copiou o `db.sqlite3`
 - Para produção, configure um banco PostgreSQL ou MySQL
 - Altere `DEBUG=False` em produção
 - Configure `ALLOWED_HOSTS` com seu domínio em produção
 - Use um servidor ASGI como Daphne ou Uvicorn em produção
+- WebSockets (Channels) requer Redis configurado para notificações em tempo real
 
 ## 🆘 Suporte
 

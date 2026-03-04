@@ -3,237 +3,251 @@
 {% block title %}Controle de Qualidade - Novo Formulário{% endblock %}
 
 {% block content %}
-<div class="mb-4 d-flex justify-content-between align-items-center">
-    <h1 class="h3 fw-bold"><i class="bi bi-clipboard-check text-primary"></i> Novo Controle de Qualidade</h1>
+
+<!-- HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-clipboard-check" style="color: #4f46e5;"></i>
+            Novo Controle de Qualidade
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0;">
+            Preencha as informações e responda às perguntas abaixo
+        </p>
+    </div>
+
     <a href="{% url 'dashboard:controle_qualidade' %}" class="btn btn-secondary">
         <i class="bi bi-arrow-left"></i> Voltar
     </a>
 </div>
 
-<!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'dashboard:pedidos_disponiveis' %}">Home</a></li>
+<!-- BREADCRUMB -->
+<nav aria-label="breadcrumb" style="margin-bottom: 2rem;">
+    <ol class="breadcrumb" style="margin-bottom: 0;">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard:home' %}">Home</a></li>
         <li class="breadcrumb-item"><a href="{% url 'dashboard:controle_qualidade' %}">Controle de Qualidade</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Novo Formulário</li>
+        <li class="breadcrumb-item active">Novo Formulário</li>
     </ol>
 </nav>
 
-<div class="row g-4">
-    <!-- Informações do Controle de Qualidade (Campos de Input) -->
-    <div class="col-lg-12">
-        <div class="card mb-4">
-            <div class="card-header bg-info text-white">
-                <strong>Informações do Controle de Qualidade</strong>
+<form method="post" id="formulario-controle" class="needs-validation" novalidate>
+{% csrf_token %}
+
+<!-- CARD INFORMAÇÕES -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <h3 class="card-title" style="margin: 0;">
+            <i class="bi bi-info-circle" style="color: #4f46e5;"></i>
+            Informações do Item
+        </h3>
+    </div>
+
+    <div style="padding: 1.5rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem;">
+
+            <div>
+                <label class="form-label fw-semibold">
+                    Nome do Item <span style="color:#ef4444">*</span>
+                </label>
+                <input type="text"
+                       class="form-control"
+                       name="nome_item"
+                       placeholder="Ex: Cápsula de Vitamina C"
+                       value="{{ formulario.nome_item }}"
+                       required
+                       autofocus>
+                <small style="color:#64748b;">Nome ou descrição do produto</small>
             </div>
-            <div class="card-body">
-                <form method="post" id="formulario-controle" class="needs-validation" novalidate>
-                    {% csrf_token %}
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="nome_item" class="form-label">Nome do Item <span class="text-danger">*</span></label>
-                            <input 
-                                type="text" 
-                                class="form-control" 
-                                id="nome_item"
-                                name="nome_item" 
-                                placeholder="Ex: Cápsula de Vitamina C"
-                                value="{{ formulario.nome_item }}"
-                                required
-                                autofocus
-                            >
-                            <small class="text-muted">Nome ou descrição do produto/item</small>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="codigo_item" class="form-label">Código do Item <span class="text-muted">(Opcional)</span></label>
-                            <input 
-                                type="text" 
-                                class="form-control" 
-                                id="codigo_item"
-                                name="codigo_item" 
-                                placeholder="Ex: NRORC_60159"
-                                value="{{ formulario.codigo_item }}"
-                            >
-                            <small class="text-muted">Código de referência (se houver)</small>
-                        </div>
-                    </div>
 
-                    <!-- Formulário de Controle de Qualidade -->
-                    <div class="col-lg-12 mt-4">
-                        <div class="card">
-                            <div class="card-header bg-success text-white">
-                                <strong><i class="bi bi-clipboard2-check"></i> Perguntas de Controle de Qualidade</strong>
-                                <small class="badge bg-white text-success ms-2">{{ perguntas.count }} pergunta{{ perguntas.count|pluralize }}</small>
-                            </div>
-                            <div class="card-body">
-                                {% if perguntas %}
-                                    <!-- Container com scroll interno -->
-                                    <div class="perguntas-container" style="max-height: 600px; overflow-y: auto; padding-right: 10px;">
-                                        {% for pergunta in perguntas %}
-                                        <div class="card mb-3 border-light shadow-sm">
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-bold">
-                                                        {{ pergunta.pergunta }}
-                                                        {% if pergunta.obrigatorio %}
-                                                        <span class="text-danger">*</span>
-                                                        {% endif %}
-                                                    </label>
-                                                    
-                                                    {% if pergunta.descricao %}
-                                                    <small class="d-block text-muted mb-2">{{ pergunta.descricao }}</small>
-                                                    {% endif %}
-
-                                                    <!-- Campo de Texto Simples -->
-                                                    {% if pergunta.tipo_campo == 'texto' %}
-                                                        <input 
-                                                            type="text" 
-                                                            class="form-control {% if pergunta.obrigatorio %}required{% endif %}"
-                                                            name="resposta_{{ pergunta.id }}"
-                                                            placeholder="Digite sua resposta..."
-                                                            value="{% for resp in respostas_salvas %}{% if resp.pergunta_id == pergunta.id %}{{ resp.resposta_texto }}{% endif %}{% endfor %}"
-                                                            {% if pergunta.obrigatorio %}required{% endif %}
-                                                        >
-
-                                                    <!-- Campo de Texto Longo -->
-                                                    {% elif pergunta.tipo_campo == 'textarea' %}
-                                                        <textarea 
-                                                            class="form-control {% if pergunta.obrigatorio %}required{% endif %}"
-                                                            name="resposta_{{ pergunta.id }}"
-                                                            rows="4"
-                                                            placeholder="Digite sua resposta..."
-                                                            {% if pergunta.obrigatorio %}required{% endif %}
-                                                        >{% for resp in respostas_salvas %}{% if resp.pergunta_id == pergunta.id %}{{ resp.resposta_texto }}{% endif %}{% endfor %}</textarea>
-
-                                                    <!-- Checkbox (Sim/Não) -->
-                                                    {% elif pergunta.tipo_campo == 'checkbox' %}
-                                                        <div class="btn-group-vertical w-100" role="group">
-                                                            {% for opcao in pergunta.opcoes.all %}
-                                                            <input 
-                                                                type="radio" 
-                                                                class="btn-check {% if pergunta.obrigatorio %}required{% endif %}"
-                                                                name="opcao_{{ pergunta.id }}"
-                                                                id="opcao_{{ opcao.id }}"
-                                                                value="{{ opcao.id }}"
-                                                                {% for resp in respostas_salvas %}{% if resp.pergunta_id == pergunta.id and resp.resposta_opcao_id == opcao.id %}checked{% endif %}{% endfor %}
-                                                                {% if pergunta.obrigatorio %}required{% endif %}
-                                                            >
-                                                            <label class="btn btn-outline-primary w-100" for="opcao_{{ opcao.id }}">
-                                                                {{ opcao.texto_opcao }}
-                                                            </label>
-                                                            {% endfor %}
-                                                        </div>
-
-                                                    <!-- Seleção Múltipla -->
-                                                    {% elif pergunta.tipo_campo == 'selecao' %}
-                                                        <select 
-                                                            class="form-select {% if pergunta.obrigatorio %}required{% endif %}"
-                                                            name="opcao_{{ pergunta.id }}"
-                                                            {% if pergunta.obrigatorio %}required{% endif %}
-                                                        >
-                                                            <option value="">-- Selecione uma opção --</option>
-                                                            {% for opcao in pergunta.opcoes.all %}
-                                                            <option 
-                                                                value="{{ opcao.id }}"
-                                                                {% for resp in respostas_salvas %}{% if resp.pergunta_id == pergunta.id and resp.resposta_opcao_id == opcao.id %}selected{% endif %}{% endfor %}
-                                                            >
-                                                                {{ opcao.texto_opcao }}
-                                                            </option>
-                                                            {% endfor %}
-                                                        </select>
-
-                                                    <!-- Campo de Número -->
-                                                    {% elif pergunta.tipo_campo == 'numero' %}
-                                                        <input 
-                                                            type="number" 
-                                                            class="form-control {% if pergunta.obrigatorio %}required{% endif %}"
-                                                            name="resposta_{{ pergunta.id }}"
-                                                            placeholder="Digite um número..."
-                                                            value="{% for resp in respostas_salvas %}{% if resp.pergunta_id == pergunta.id %}{{ resp.resposta_texto }}{% endif %}{% endfor %}"
-                                                            {% if pergunta.obrigatorio %}required{% endif %}
-                                                        >
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-
-                                    <!-- Botões de Ação -->
-                                    <div class="d-flex gap-2 mt-4 pt-3 border-top">
-                                        <button type="submit" class="btn btn-success btn-lg flex-grow-1">
-                                            <i class="bi bi-check-circle"></i> Salvar Formulário
-                                        </button>
-                                        <a href="{% url 'dashboard:controle_qualidade' %}" class="btn btn-secondary btn-lg">
-                                            <i class="bi bi-x-circle"></i> Cancelar
-                                        </a>
-                                    </div>
-                                {% else %}
-                                    <div class="text-center py-5">
-                                        <i class="bi bi-inbox display-4 text-muted opacity-50"></i>
-                                        <p class="text-muted mt-3">
-                                            <strong>Nenhuma pergunta configurada</strong>
-                                            <br>
-                                            <small>O administrador ainda não configurou perguntas para Controle de Qualidade</small>
-                                        </p>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </form>
+            <div>
+                <label class="form-label fw-semibold">
+                    Código do Item <span style="color:#94a3b8">(Opcional)</span>
+                </label>
+                <input type="text"
+                       class="form-control"
+                       name="codigo_item"
+                       placeholder="Ex: NRORC_60159"
+                       value="{{ formulario.codigo_item }}">
+                <small style="color:#64748b;">Código de referência</small>
             </div>
+
         </div>
     </div>
 </div>
 
+<!-- CARD PERGUNTAS -->
+<div class="card">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+        <h3 class="card-title" style="margin:0;">
+            <i class="bi bi-list-check" style="color:#4f46e5;"></i>
+            Perguntas de Controle
+        </h3>
+
+        <span class="badge" style="background:#eef2ff; color:#4338ca; font-weight:600;">
+            {{ perguntas.count }} pergunta{{ perguntas.count|pluralize }}
+        </span>
+    </div>
+
+    <div style="padding: 1.5rem;">
+
+        {% if perguntas %}
+
+        <div class="perguntas-container">
+
+            {% for pergunta in perguntas %}
+            <div class="pergunta-box">
+
+                <div class="pergunta-titulo">
+                    {{ pergunta.pergunta }}
+                    {% if pergunta.obrigatorio %}
+                        <span style="color:#ef4444">*</span>
+                    {% endif %}
+                </div>
+
+                {% if pergunta.descricao %}
+                    <div class="pergunta-descricao">
+                        {{ pergunta.descricao }}
+                    </div>
+                {% endif %}
+
+                <div style="margin-top: 0.75rem;">
+
+                    {% if pergunta.tipo_campo == 'texto' %}
+                        <input type="text"
+                               class="form-control"
+                               name="resposta_{{ pergunta.id }}"
+                               placeholder="Digite sua resposta..."
+                               {% if pergunta.obrigatorio %}required{% endif %}>
+
+                    {% elif pergunta.tipo_campo == 'textarea' %}
+                        <textarea class="form-control"
+                                  rows="4"
+                                  name="resposta_{{ pergunta.id }}"
+                                  placeholder="Digite sua resposta..."
+                                  {% if pergunta.obrigatorio %}required{% endif %}></textarea>
+
+                    {% elif pergunta.tipo_campo == 'numero' %}
+                        <input type="number"
+                               class="form-control"
+                               name="resposta_{{ pergunta.id }}"
+                               placeholder="Digite um número..."
+                               {% if pergunta.obrigatorio %}required{% endif %}>
+
+                    {% elif pergunta.tipo_campo == 'checkbox' %}
+                        <div class="opcoes-grid">
+                            {% for opcao in pergunta.opcoes.all %}
+                            <label class="opcao-card">
+                                <input type="radio"
+                                       name="opcao_{{ pergunta.id }}"
+                                       value="{{ opcao.id }}"
+                                       {% if pergunta.obrigatorio %}required{% endif %}>
+                                <span>{{ opcao.texto_opcao }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+
+                    {% elif pergunta.tipo_campo == 'selecao' %}
+                        <select class="form-select"
+                                name="opcao_{{ pergunta.id }}"
+                                {% if pergunta.obrigatorio %}required{% endif %}>
+                            <option value="">Selecione uma opção</option>
+                            {% for opcao in pergunta.opcoes.all %}
+                                <option value="{{ opcao.id }}">{{ opcao.texto_opcao }}</option>
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+
+                </div>
+            </div>
+            {% endfor %}
+
+        </div>
+
+        <!-- BOTÕES -->
+        <div style="margin-top:2rem; display:flex; gap:1rem;">
+            <button type="submit" class="btn btn-lg" style="background:#4f46e5; color:white; flex:1;">
+                <i class="bi bi-check-circle"></i> Salvar Formulário
+            </button>
+
+            <a href="{% url 'dashboard:controle_qualidade' %}" class="btn btn-secondary btn-lg">
+                Cancelar
+            </a>
+        </div>
+
+        {% else %}
+            <div style="text-align:center; padding:3rem 1rem; color:#94a3b8;">
+                <i class="bi bi-inbox" style="font-size:2.5rem;"></i>
+                <p style="margin-top:1rem;">
+                    Nenhuma pergunta configurada.
+                </p>
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+
+</form>
+
 <style>
-    .perguntas-container::-webkit-scrollbar {
-        width: 6px;
-    }
-    
-    .perguntas-container::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 10px;
-    }
-    
-    .perguntas-container::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 10px;
-    }
-    
-    .perguntas-container::-webkit-scrollbar-thumb:hover {
-        background: #555;
-    }
+.perguntas-container {
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
 
-    .card {
-        transition: box-shadow 0.3s ease;
-    }
+.pergunta-box {
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    background: #fafafa;
+    transition: all 0.2s ease;
+}
 
-    .card:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-    }
+.pergunta-box:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.pergunta-titulo {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.pergunta-descricao {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+.opcoes-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.opcao-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    background: white;
+    transition: 0.2s ease;
+}
+
+.opcao-card:hover {
+    border-color: #4f46e5;
+    background: #eef2ff;
+}
+
+.opcao-card input {
+    accent-color: #4f46e5;
+}
 </style>
-
-<script>
-    // Validação de formulário Bootstrap
-    (function() {
-        'use strict';
-        window.addEventListener('load', function() {
-            var forms = document.querySelectorAll('.needs-validation');
-            Array.prototype.slice.call(forms).forEach(function(form) {
-                form.addEventListener('submit', function(event) {
-                    if (!form.checkValidity()) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                    }
-                    form.classList.add('was-validated');
-                }, false);
-            });
-        }, false);
-    })();
-</script>
 
 {% endblock %}

@@ -8,105 +8,132 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 fw-bold"><i class="bi bi-cash-stack text-primary"></i> Gestão de Bônus</h1>
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-cash-stack" style="color: #4f46e5;"></i> Gestão de Bônus
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Configurar faixas de bônus e acompanhar pagamentos</p>
+    </div>
     <a href="/admin/core/bonusfaixa/add/" class="btn btn-primary">
         <i class="bi bi-plus-circle"></i> Nova Faixa
     </a>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-list-ol"></i> Faixas de Bônus
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Faixa de Pontos</th>
-                                <th>Valor do Bônus</th>
-                                <th>Status</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for faixa in faixas %}
-                            <tr>
-                                <td>{{ faixa.faixa_min }} - {{ faixa.faixa_max }} pts</td>
-                                <td><span class="badge bg-success">R$ {{ faixa.valor_em_reais }}</span></td>
-                                <td>
-                                    {% if faixa.ativo %}
-                                    <span class="badge bg-success">Ativa</span>
-                                    {% else %}
-                                    <span class="badge bg-secondary">Inativa</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <a href="/admin/core/bonusfaixa/{{ faixa.id }}/change/" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4" class="text-center text-muted">Nenhuma faixa cadastrada</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+<!-- FAIXAS DE BÔNUS -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <div style=\"display: flex; justify-content: space-between; align-items: center; gap: 2rem;\">
+            <h3 class=\"card-title\" style=\"margin: 0;\">
+                <i class=\"bi bi-list-ol\"></i> Faixas de Bônus
+            </h3>
+            <small style=\"color: #64748b; white-space: nowrap; padding: 0.5rem 1rem; background: #f1f5f9; border-radius: 0.375rem;\">
+                Total: {{ faixas|length }}
+            </small>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light border-bottom">
+                    <tr style="background: #f9fafb;">
+                        <th><i class="bi bi-graph-up"></i> Faixa de Pontos</th>
+                        <th><i class="bi bi-cash-coin"></i> Valor do Bônus</th>
+                        <th style="width: 100px;"><i class="bi bi-check-circle"></i> Status</th>
+                        <th style="width: 80px; text-align: center;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for faixa in faixas %}
+                    <tr>
+                        <td><strong>{{ faixa.faixa_min }} - {{ faixa.faixa_max }} pts</strong></td>
+                        <td>
+                            <span class="badge" style="background: #d1fae5; color: #047857; padding: 0.5rem 0.75rem;">
+                                R$ {{ faixa.valor_em_reais }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if faixa.ativo %}
+                            <span class="badge" style="background: #d1fae5; color: #047857;">Ativa</span>
+                            {% else %}
+                            <span class="badge" style="background: #fee2e2; color: #991b1b;">Inativa</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            <a href="/admin/core/bonusfaixa/{{ faixa.id }}/change/" class="btn btn-sm btn-outline-primary" title="Editar faixa">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 2rem; color: #64748b;">
+                            <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.3;"></i>
+                            <p style="margin-top: 1rem;">Nenhuma faixa cadastrada</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-calendar-check"></i> Histórico de Bônus Mensais
-            </div>
-            <div class="card-body" style="max-height: 500px; overflow-y: auto;">
-                <div class="table-responsive">
-                    <table class="table table-hover table-sm">
-                        <thead>
-                            <tr>
-                                <th>Funcionário</th>
-                                <th>Mês</th>
-                                <th>Pontos</th>
-                                <th>Valor Calculado</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for bonus in historico_bonus %}
-                            <tr>
-                                <td>{{ bonus.funcionario.get_full_name }}</td>
-                                <td>{{ bonus.mes_referencia|date:"m/Y" }}</td>
-                                <td>{{ bonus.pontos_totais_mes }} pts</td>
-                                <td><span class="badge bg-success">R$ {{ bonus.valor_em_reais_calculado }}</span></td>
-                                <td>
-                                    {% if bonus.status_pagamento == 'pago' %}
-                                    <span class="badge bg-success">Pago</span>
-                                    {% elif bonus.status_pagamento == 'pendente' %}
-                                    <span class="badge bg-warning">Pendente</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">Cancelado</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center text-muted">Nenhum bônus calculado ainda</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+<!-- HISTÓRICO DE BÔNUS -->
+<div class="card">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <div style=\"display: flex; justify-content: space-between; align-items: center; gap: 2rem;\">
+            <h3 class=\"card-title\" style=\"margin: 0;\">
+                <i class=\"bi bi-calendar-check\"></i> Histórico de Bônus Mensais
+            </h3>
+            <small style=\"color: #64748b; white-space: nowrap; padding: 0.5rem 1rem; background: #f1f5f9; border-radius: 0.375rem;\">
+                Total: {{ historico_bonus|length }}
+            </small>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div style="overflow-x: auto;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th><i class="bi bi-person"></i> Funcionário</th>
+                        <th><i class="bi bi-calendar"></i> Mês</th>
+                        <th style="width: 100px;"><i class="bi bi-star"></i> Pontos</th>
+                        <th style="width: 150px;"><i class="bi bi-cash-coin"></i> Valor Calculado</th>
+                        <th style="width: 100px;"><i class="bi bi-check-circle"></i> Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bonus in historico_bonus %}
+                    <tr>
+                        <td><strong>{{ bonus.funcionario.get_full_name }}</strong></td>
+                        <td><small>{{ bonus.mes_referencia|date:"m/Y" }}</small></td>
+                        <td><small>{{ bonus.pontos_totais_mes }} pts</small></td>
+                        <td>
+                            <span class="badge" style="background: #d1fae5; color: #047857;">
+                                R$ {{ bonus.valor_em_reais_calculado }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if bonus.status_pagamento == 'pago' %}
+                            <span class="badge" style="background: #d1fae5; color: #047857;">Pago</span>
+                            {% elif bonus.status_pagamento == 'pendente' %}
+                            <span class="badge" style="background: #fef3c7; color: #92400e;">Pendente</span>
+                            {% else %}
+                            <span class="badge" style="background: #fee2e2; color: #991b1b;">Cancelado</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: #64748b;">
+                            <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.3;"></i>
+                            <p style="margin-top: 1rem;">Nenhum bônus calculado ainda</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

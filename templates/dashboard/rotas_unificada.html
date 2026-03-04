@@ -1,0 +1,600 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerenciamento de Rotas{% endblock %}
+
+{% block content %}
+<style>
+    .message-box {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 0.375rem;
+        border-left: 4px solid;
+    }
+    .message-box.success {
+        background: #d1fae5;
+        border-left-color: #10b981;
+        color: #065f46;
+    }
+    .message-box.error {
+        background: #fee2e2;
+        border-left-color: #dc2626;
+        color: #991b1b;
+    }
+    
+    /* Corrigir alinhamento das abas */
+    .nav-tabs {
+        margin-bottom: 0 !important;
+    }
+    
+    .tab-content {
+        border-top: 1px solid #e2e8f0;
+        padding-top: 1.5rem;
+    }
+    
+    .tab-pane {
+        display: none;
+    }
+    
+    .tab-pane.show.active {
+        display: block;
+    }
+</style>
+
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-truck" style="color: #4f46e5;"></i> Gerenciamento de Rotas
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Todas as etapas de expedição em um único lugar</p>
+    </div>
+</div>
+
+<!-- KPIs GRID -->
+<div class="grid-4" style="margin-bottom: 2rem;">
+    <!-- KPI: Prontos para Rota -->
+    <div class="card">
+        <div class="stat-card">
+            <div class="stat-value">
+                <div class="stat-label">Prontos para Rota</div>
+                <div class="stat-number">{{ total_prontos }}</div>
+            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #dbeafe, #f0f9ff); color: #0369a1;">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI: Fila Motoboy -->
+    <div class="card">
+        <div class="stat-card">
+            <div class="stat-value">
+                <div class="stat-label">Fila Motoboy</div>
+                <div class="stat-number">{{ total_motoboy }}</div>
+            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #fef3c7, #fffbeb); color: #d97706;">
+                <i class="bi bi-truck"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI: Fila Sedex -->
+    <div class="card">
+        <div class="stat-card">
+            <div class="stat-value">
+                <div class="stat-label">Fila Sedex</div>
+                <div class="stat-number">{{ total_sedex }}</div>
+            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #f3e8ff, #faf5ff); color: #7c3aed;">
+                <i class="bi bi-box-seam"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI: Expedidos -->
+    <div class="card">
+        <div class="stat-card">
+            <div class="stat-value">
+                <div class="stat-label">Expedidos</div>
+                <div class="stat-number">{{ total_expedidos }}</div>
+            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #dcfce7, #f0fdf4); color: #16a34a;">
+                <i class="bi bi-check2-circle"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MENSAGENS -->
+{% if messages %}
+    {% for message in messages %}
+    <div class="message-box {% if message.tags == 'error' %}error{% else %}success{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+{% endif %}
+
+<!-- TABS NAVIGATION - BOOTSTRAP TABS -->
+<ul class="nav nav-tabs" id="rotasTab" role="tablist" style="border-bottom: 2px solid #e2e8f0; margin-bottom: 0;">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="prontos-tab" data-bs-toggle="tab" data-bs-target="#prontos" type="button" role="tab" aria-controls="prontos" aria-selected="true">
+            <i class="bi bi-check-circle"></i> Prontos <span class="badge bg-primary">{{ total_prontos }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="motoboy-tab" data-bs-toggle="tab" data-bs-target="#motoboy" type="button" role="tab" aria-controls="motoboy" aria-selected="false">
+            <i class="bi bi-truck"></i> Motoboy <span class="badge bg-warning">{{ total_motoboy }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="sedex-tab" data-bs-toggle="tab" data-bs-target="#sedex" type="button" role="tab" aria-controls="sedex" aria-selected="false">
+            <i class="bi bi-box-seam"></i> Sedex <span class="badge bg-secondary">{{ total_sedex }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="historico-tab" data-bs-toggle="tab" data-bs-target="#historico" type="button" role="tab" aria-controls="historico" aria-selected="false">
+            <i class="bi bi-clock-history"></i> Histórico <span class="badge bg-success">{{ total_expedidos }}</span>
+        </button>
+    </li>
+</ul>
+
+<!-- TAB CONTENT -->
+<div class="tab-content" id="rotasTabContent">
+
+    <!-- TAB 1: PRONTOS PARA ROTA -->
+    <div class="tab-pane fade show active" id="prontos" role="tabpanel" aria-labelledby="prontos-tab">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Pedidos Prontos para Expedição</h5>
+                <small>Escolha a rota (Motoboy ou Sedex) para cada pedido</small>
+            </div>
+            <div class="card-body">
+                {% if pedidos_prontos %}
+                <div style="overflow-x: auto;">
+                    <table class="table">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 5%;"></th>
+                                <th style="width: 12%;">NRORC</th>
+                                <th style="width: 12%;">Fórmulas</th>
+                                <th style="width: 18%;">Data Criação</th>
+                                <th style="width: 15%;">Status</th>
+                                <th style="width: 38%; text-align: center;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pedido in pedidos_prontos %}
+                            <tr>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-prontos-{{ pedido.id }}" aria-expanded="false">
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                </td>
+                                <td><strong class="text-info">#{{ pedido.nrorc }}</strong></td>
+                                <td><span class="badge bg-info">{{ pedido.formulas.count }}</span></td>
+                                <td><small>{{ pedido.criado_em|date:"d/m/Y H:i" }}</small></td>
+                                <td>
+                                    {% if pedido.pode_ir_para_rota %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Pronto
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark" title="{{ pedido.motivo_nao_pode_ir_rota }}">
+                                            <i class="bi bi-exclamation-circle"></i> Aguardando
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align: center;">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        {% if pedido.pode_ir_para_rota %}
+                                            <a href="{% url 'dashboard:pedido_escolher_rota' pedido.id 'motoboy' %}" 
+                                               class="btn btn-outline-warning" title="Enviar via Motoboy">
+                                                <i class="bi bi-truck"></i> Motoboy
+                                            </a>
+                                            <a href="{% url 'dashboard:pedido_escolher_rota' pedido.id 'sedex' %}" 
+                                               class="btn btn-outline-secondary" title="Enviar via Sedex">
+                                                <i class="bi bi-box-seam"></i> Sedex
+                                            </a>
+                                        {% else %}
+                                            <button type="button" class="btn btn-outline-warning" disabled title="{{ pedido.motivo_nao_pode_ir_rota }}">
+                                                <i class="bi bi-lock"></i> Motoboy
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary" disabled title="{{ pedido.motivo_nao_pode_ir_rota }}">
+                                                <i class="bi bi-lock"></i> Sedex
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% if not pedido.pode_ir_para_rota %}
+                            <tr class="table-warning">
+                                <td colspan="6">
+                                    <small>
+                                        <i class="bi bi-info-circle"></i>
+                                        <strong>Motivo:</strong> {{ pedido.motivo_nao_pode_ir_rota }}
+                                    </small>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <td colspan="6" class="p-0">
+                                    <div class="collapse" id="collapse-prontos-{{ pedido.id }}">
+                                        <div class="card card-body bg-light">
+                                            <strong>Fórmulas neste pedido:</strong>
+                                            <table class="table table-sm mt-2">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>ID</th>
+                                                        <th>Descrição</th>
+                                                        <th>Forma</th>
+                                                        <th>Volume</th>
+                                                        <th>Qtd</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for formula in pedido.formulas.all %}
+                                                    <tr>
+                                                        <td><small>#{{ formula.id }}</small></td>
+                                                        <td><small>{{ formula.descricao }}</small></td>
+                                                        <td><small>{{ formula.get_tipo_forma }}</small></td>
+                                                        <td><small>{{ formula.get_volume_display }}</small></td>
+                                                        <td><small>{{ formula.quantidade }}</small></td>
+                                                        <td><span class="badge bg-info">{{ formula.get_status_display }}</span></td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Nenhum pedido pronto para expedição no momento.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: FILA MOTOBOY -->
+    <div class="tab-pane fade" id="motoboy" role="tabpanel" aria-labelledby="motoboy-tab">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Fila Motoboy - Aguardando Envio</h5>
+                <small>Selecione quais pedidos deseja enviar agora</small>
+            </div>
+            <div class="card-body">
+                {% if fila_motoboy %}
+                    <form method="POST" action="{% url 'dashboard:finalizar_rota' 'motoboy' %}">
+                        {% csrf_token %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="50px">
+                                            <input type="checkbox" class="form-check-input" id="select-all-motoboy" onchange="toggleAll(this)">
+                                        </th>
+                                        <th style="width: 40px;"></th>
+                                        <th>NRORC</th>
+                                        <th>Fórmulas</th>
+                                        <th>Data Adição</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pedido in fila_motoboy %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" class="form-check-input pedido-checkbox" 
+                                                   name="pedidos_selecionados" value="{{ pedido.id }}">
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-motoboy-{{ pedido.id }}" aria-expanded="false">
+                                                <i class="bi bi-chevron-down"></i>
+                                            </button>
+                                        </td>
+                                        <td><strong>#{{ pedido.nrorc }}</strong></td>
+                                        <td><span class="badge bg-warning text-dark">{{ pedido.formulas.count }}</span></td>
+                                        <td><small>{{ pedido.criado_em|date:"d/m/Y H:i" }}</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="5" class="p-0">
+                                            <div class="collapse" id="collapse-motoboy-{{ pedido.id }}">
+                                                <div class="card card-body bg-light">
+                                                    <strong>Fórmulas neste pedido:</strong>
+                                                    <table class="table table-sm mt-2">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th>ID</th>
+                                                                <th>Descrição</th>
+                                                                <th>Forma</th>
+                                                                <th>Volume</th>
+                                                                <th>Qtd</th>
+                                                                <th>Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for formula in pedido.formulas.all %}
+                                                            <tr>
+                                                                <td><small>#{{ formula.id }}</small></td>
+                                                                <td><small>{{ formula.descricao }}</small></td>
+                                                                <td><small>{{ formula.get_tipo_forma }}</small></td>
+                                                                <td><small>{{ formula.get_volume_display }}</small></td>
+                                                                <td><small>{{ formula.quantidade }}</small></td>
+                                                                <td><span class="badge bg-warning text-dark">{{ formula.get_status_display }}</span></td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-warning" id="btn-enviar-motoboy" disabled>
+                                <i class="bi bi-send"></i> Enviar Selecionados
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i> Nenhum pedido aguardando envio na rota Motoboy.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: FILA SEDEX -->
+    <div class="tab-pane fade" id="sedex" role="tabpanel" aria-labelledby="sedex-tab">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Fila Sedex - Aguardando Envio</h5>
+                <small>Selecione quais pedidos deseja enviar agora</small>
+            </div>
+            <div class="card-body">
+                {% if fila_sedex %}
+                    <form method="POST" action="{% url 'dashboard:finalizar_rota' 'sedex' %}">
+                        {% csrf_token %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="50px">
+                                            <input type="checkbox" class="form-check-input" id="select-all-sedex" onchange="toggleAll(this)">
+                                        </th>
+                                        <th style="width: 40px;"></th>
+                                        <th>NRORC</th>
+                                        <th>Fórmulas</th>
+                                        <th>Data Adição</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pedido in fila_sedex %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" class="form-check-input pedido-checkbox-sedex" 
+                                                   name="pedidos_selecionados" value="{{ pedido.id }}">
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-sedex-{{ pedido.id }}" aria-expanded="false">
+                                                <i class="bi bi-chevron-down"></i>
+                                            </button>
+                                        </td>
+                                        <td><strong>#{{ pedido.nrorc }}</strong></td>
+                                        <td><span class="badge bg-secondary">{{ pedido.formulas.count }}</span></td>
+                                        <td><small>{{ pedido.criado_em|date:"d/m/Y H:i" }}</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="5" class="p-0">
+                                            <div class="collapse" id="collapse-sedex-{{ pedido.id }}">
+                                                <div class="card card-body bg-light">
+                                                    <strong>Fórmulas neste pedido:</strong>
+                                                    <table class="table table-sm mt-2">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th>ID</th>
+                                                                <th>Descrição</th>
+                                                                <th>Forma</th>
+                                                                <th>Volume</th>
+                                                                <th>Qtd</th>
+                                                                <th>Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for formula in pedido.formulas.all %}
+                                                            <tr>
+                                                                <td><small>#{{ formula.id }}</small></td>
+                                                                <td><small>{{ formula.descricao }}</small></td>
+                                                                <td><small>{{ formula.get_tipo_forma }}</small></td>
+                                                                <td><small>{{ formula.get_volume_display }}</small></td>
+                                                                <td><small>{{ formula.quantidade }}</small></td>
+                                                                <td><span class="badge bg-secondary">{{ formula.get_status_display }}</span></td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-secondary" id="btn-enviar-sedex" disabled>
+                                <i class="bi bi-send"></i> Enviar Selecionados
+                            </button>
+                        </div>
+                    </form>
+                {% else %}
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> Nenhum pedido aguardando envio na rota Sedex.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: HISTÓRICO -->
+    <div class="tab-pane fade" id="historico" role="tabpanel" aria-labelledby="historico-tab">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Histórico de Expedições</h5>
+                <small>Batches de expedições realizadas</small>
+            </div>
+            <div class="card-body">
+                {% if expedidos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40px;"></th>
+                                    <th>Rota</th>
+                                    <th>Funcionário</th>
+                                    <th>Pedidos</th>
+                                    <th>Fórmulas</th>
+                                    <th>Data</th>
+                                    <th>Detalhes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for expedis in expedidos %}
+                                {% if expedis.rota_tipo %}
+                                <!-- Novo modelo: RegistroExpedicao com rota_tipo -->
+                                <tr>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-exp-{{ expedis.id }}" aria-expanded="false">
+                                            <i class="bi bi-chevron-down"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        {% if expedis.rota_tipo == 'motoboy' %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-person-walking"></i> Motoboy
+                                        </span>
+                                        {% elif expedis.rota_tipo == 'sedex' %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-box-seam"></i> Sedex
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ expedis.funcionario.get_full_name|default:expedis.funcionario.username }}</strong></td>
+                                    <td><span class="badge bg-info">{{ expedis.total_pedidos }}</span></td>
+                                    <td><span class="badge bg-success">{{ expedis.total_formulas }}</span></td>
+                                    <td><small>{{ expedis.data|date:"d/m/Y H:i" }}</small></td>
+                                    <td>
+                                        <a href="{% url 'dashboard:expedicao_detalhes' expedis.id %}" class="btn btn-sm btn-outline-success">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="7" class="p-0">
+                                        <div class="collapse" id="collapse-exp-{{ expedis.id }}">
+                                            <div class="card card-body bg-light">
+                                                <strong>Pedidos nesta expedição:</strong>
+                                                <table class="table table-sm mt-2">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>NRORC</th>
+                                                            <th>Fórmulas</th>
+                                                            <th>Observações</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for pedido in expedis.pedidos_mestre.all %}
+                                                        <tr>
+                                                            <td><strong>#{{ pedido.nrorc }}</strong></td>
+                                                            <td><span class="badge bg-info">{{ pedido.formulas.count }}</span></td>
+                                                            <td><small>{{ pedido.observacoes|truncatewords:10 }}</small></td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <!-- Fallback antigo modelo para compatibilidade -->
+                                <tr>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-historico-{{ expedis.id }}" aria-expanded="false">
+                                            <i class="bi bi-chevron-down"></i>
+                                        </button>
+                                    </td>
+                                    <td colspan="2"><strong class="text-success">#{{ expedis.nrorc }}</strong></td>
+                                    <td>-</td>
+                                    <td><span class="badge bg-success">{{ expedis.formulas.count }}</span></td>
+                                    <td><small>{{ expedis.criado_em|date:"d/m/Y H:i" }}</small></td>
+                                    <td>Legacy</td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Nenhuma expedição realizada ainda.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function toggleAll(checkbox) {
+    const isChecked = checkbox.checked;
+    const selectedTab = document.querySelector('.nav-link.active').getAttribute('data-bs-target');
+    
+    if (selectedTab === '#motoboy') {
+        document.querySelectorAll('.pedido-checkbox').forEach(cb => cb.checked = isChecked);
+        updateButtonState('motoboy');
+    } else if (selectedTab === '#sedex') {
+        document.querySelectorAll('.pedido-checkbox-sedex').forEach(cb => cb.checked = isChecked);
+        updateButtonState('sedex');
+    }
+}
+
+document.querySelectorAll('.pedido-checkbox').forEach(cb => {
+    cb.addEventListener('change', () => updateButtonState('motoboy'));
+});
+
+document.querySelectorAll('.pedido-checkbox-sedex').forEach(cb => {
+    cb.addEventListener('change', () => updateButtonState('sedex'));
+});
+
+function updateButtonState(rota) {
+    const selector = rota === 'motoboy' ? '.pedido-checkbox' : '.pedido-checkbox-sedex';
+    const checked = document.querySelectorAll(selector + ':checked').length;
+    const btn = document.getElementById(`btn-enviar-${rota}`);
+    
+    if (checked > 0) {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-send"></i> Enviar ${checked} Pedido(s)`;
+    } else {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="bi bi-send"></i> Enviar Selecionados`;
+    }
+}
+
+// Inicializar botões
+updateButtonState('motoboy');
+updateButtonState('sedex');
+</script>
+{% endblock %}

@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Trabalhar na Fórmula{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Layout geral */
+    .card {
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        margin-bottom: 1rem;
+    }
+
+    .card-header {
+        padding: 0.5rem 1rem;
+    }
+
+    .card-body {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+    }
+
+    .form-check {
+        margin-bottom: 0.4rem;
+    }
+
+    /* Grid principal */
+    .grid-3 {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .grid-3 .card {
+        flex: 1 1 calc(33.333% - 0.66rem);
+        min-width: 200px;
+    }
+
+    /* Card de checklist ocupa toda largura */
+    .checklist-card {
+        width: 100%;
+    }
+
+    .checklist-card .card-body {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    /* Botão Finalizar centralizado */
+    .btn-finalizar {
+        margin-top: 0.5rem;
+    }
+
+    @media (max-width: 992px) {
+        .grid-3 .card {
+            flex: 1 1 calc(50% - 0.5rem);
+        }
+    }
+
+    @media (max-width: 576px) {
+        .grid-3 .card {
+            flex: 1 1 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <h1 class="h3 fw-bold mb-1">
+        <i class="bi bi-clipboard-data text-primary"></i> Fórmula: NRORC {{ formula.pedido_mestre.nrorc }}
+    </h1>
+    <p class="text-secondary mb-2 small">{{ formula.descricao }}</p>
+    <h6 class="fw-semibold mb-1">{{ formula.etapa_atual.nome }}</h6>
+    <span class="badge bg-light text-purple mb-2">{{ formula.status|upper }}</span>
+    <br>
+    <a href="{% url 'dashboard:historico_etapas' formula.id %}" class="btn btn-secondary btn-sm mb-3">
+        <i class="bi bi-clock-history"></i> Ver Histórico
+    </a>
+</div>
+
+<!-- Grid de cards compactos -->
+<div class="grid-3">
+    <!-- Informações da Fórmula -->
+    <div class="card">
+        <div class="card-header py-1">
+            <h6 class="mb-0">Informações da Fórmula</h6>
+        </div>
+        <div class="card-body py-1">
+            <p><strong>Forma:</strong> {{ formula.get_tipo_forma }}</p>
+            <p><strong>Volume:</strong> {{ formula.get_volume_display }}</p>
+            <p><strong>Quantidade:</strong> {{ formula.quantidade }} unidades</p>
+            <p><strong>Criado em:</strong> {{ formula.criado_em|date:"d/m/Y H:i" }}</p>
+            <p><strong>Data e Hora:</strong> 
+                {% if formula.datetime_atualizacao_api %}
+                    {{ formula.datetime_atualizacao_api|date:"d/m/Y H:i" }}
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Pedido -->
+    <div class="card">
+        <div class="card-header py-1">
+            <h6 class="mb-0">Pedido</h6>
+        </div>
+        <div class="card-body py-1">
+            <p><strong>NRORC:</strong> {{ formula.pedido_mestre.nrorc }}</p>
+            <p><strong>Observações:</strong> {{ formula.pedido_mestre.observacoes|default:"-" }}</p>
+            <p><strong>Total de Fórmulas:</strong> {{ formula.pedido_mestre.total_formulas }}</p>
+            <p><strong>Prontas para Expedição:</strong> <span class="badge bg-success">{{ formula.pedido_mestre.formulas_prontas }}</span></p>
+            <p><strong>Status:</strong> <span class="badge bg-primary">{{ formula.pedido_mestre.get_status_display }}</span></p>
+        </div>
+    </div>
+
+    <!-- Histórico de Etapas -->
+    <div class="card">
+        <div class="card-header py-1">
+            <h6 class="mb-0">Histórico de Etapas</h6>
+        </div>
+        <div class="card-body py-1" style="max-height: 200px; overflow-y: auto;">
+            <small>
+                {% for hist_etapa in formula.historico_etapas.all %}
+                <div class="mb-1">
+                    <strong>{{ hist_etapa.etapa.nome }}</strong>
+                    <br>Funcionário: {{ hist_etapa.funcionario.get_full_name|default:hist_etapa.funcionario.username }}
+                    <br>Tempo: {{ hist_etapa.tempo_gasto_formatado }}
+                    <br>Pontos: {{ hist_etapa.pontos_gerados }}
+                </div>
+                <hr class="my-1">
+                {% empty %}
+                <p class="text-muted mb-0">Sem histórico ainda</p>
+                {% endfor %}
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Card grande do Checklist com botão Finalizar -->
+<div class="card checklist-card">
+    <div class="card-header py-2">
+        <h5 class="mb-0">Checklist da Etapa</h5>
+        {% if is_gestor and not is_funcionario %}
+        <small class="text-muted d-block mt-1"><i class="bi bi-info-circle"></i> Visualização apenas (você é gerente)</small>
+        {% endif %}
+    </div>
+    <div class="card-body py-2">
+        {% if checklists %}
+            {% for checklist in checklists %}
+            {% with exec=checklist_execucoes %}
+            <div class="form-check">
+                <input class="form-check-input checklist-checkbox" type="checkbox" 
+                       id="check_{{ checklist.id }}"
+                       data-formula-id="{{ formula.id }}"
+                       data-checklist-id="{{ checklist.id }}"
+                       {% for e in exec %}{% if e.checklist_id == checklist.id %}{% if e.marcado %}checked{% endif %}{% endif %}{% endfor %}>
+                <label class="form-check-label" for="check_{{ checklist.id }}">
+                    <strong>{{ checklist.nome }}</strong>
+                    {% if checklist.descricao %}<br><small class="text-muted">{{ checklist.descricao }}</small>{% endif %}
+                    <br><small>{{ checklist.pontos_do_check }} pontos</small>
+                </label>
+            </div>
+            {% endwith %}
+            {% endfor %}
+        {% else %}
+            <p class="text-muted mb-0">Nenhum checklist configurado.</p>
+        {% endif %}
+
+        {% if is_funcionario %}
+        <div class="d-grid btn-finalizar">
+            <form method="post" action="{% url 'dashboard:finalizar_etapa_formula' formula.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-lg">
+                    Finalizar Etapa: {{ formula.etapa_atual.nome }}
+                </button>
+            </form>
+        </div>
+        {% elif is_gestor %}
+        <div class="alert alert-info mt-2 py-1">
+            <i class="bi bi-info-circle"></i> Você está visualizando como gerente. Apenas o funcionário responsável pode finalizar a etapa.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.querySelectorAll('.checklist-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const formulaId = this.dataset.formulaId;
+        const checklistId = this.dataset.checklistId;
+        const isChecked = this.checked;
+        
+        // Enviar POST
+        fetch(`/dashboard/formula/${formulaId}/marcar-checklist/${checklistId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.sucesso) {
+                // Se der erro, desfazer o checkbox
+                this.checked = !isChecked;
+                alert('Erro ao marcar checklist: ' + (data.erro || 'Desconhecido'));
+            }
+            // Sucesso - checkbox já está marcado/desmarcado no DOM
+        })
+        .catch(error => {
+            this.checked = !isChecked;
+            alert('Erro: ' + error.message);
+        });
+    });
+});
+</script>
+{% endblock %}

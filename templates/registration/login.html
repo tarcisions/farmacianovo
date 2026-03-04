@@ -3,66 +3,84 @@
 {% block title %}Login - Amaren{% endblock %}
 
 {% block login_content %}
-<div class="container">
-    <div class="row justify-content-center align-items-center min-vh-100">
-        <div class="col-md-5">
-            <div class="card shadow-lg">
-                <div class="card-body p-5">
-                    <div class="text-center mb-4">
-                        <i class="bi bi-trophy-fill text-primary" style="font-size: 3rem;"></i>
-                        <h2 class="mt-3 fw-bold">Amaren</h2>
-                    </div>
-                    
-                    {% if form.errors %}
-                    <div class="alert alert-danger" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                        Usuário ou senha incorretos.
-                    </div>
-                    {% endif %}
-                    
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <div class="mb-3">
-                            <label for="id_username" class="form-label">Usuário</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-person"></i></span>
-                                <input type="text" class="form-control" id="id_username" name="username" required autofocus>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="id_password" class="form-label">Senha</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                                <input type="password" class="form-control" id="id_password" name="password" required>
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary w-100 py-2 mb-3">
-                            <i class="bi bi-box-arrow-in-right"></i> Entrar
-                        </button>
-                        
-                        <input type="hidden" name="next" value="{{ next }}">
-                    </form>
-                    
-                    <div class="text-center mt-4 pt-3 border-top">
-                        <small class="text-muted">
-                            <strong>Usuários de teste:</strong><br>
-                            <span class="badge bg-primary">admin / admin123</span>
-                            <span class="badge bg-info">gerente / gerente123</span>
-                            <span class="badge bg-success">func_maria / func123</span>
-                        </small>
+<div style="min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; padding: 2rem;">
+    <div style="width: 100%; max-width: 420px;">
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <div style="width: 60px; height: 60px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+                <i class="bi bi-capsule" style="font-size: 2rem; color: #4f46e5;"></i>
+            </div>
+            <h1 style="font-size: 2rem; font-weight: 800; margin: 0; color: white;">Amaren</h1>
+        </div>
+
+        <!-- Card -->
+        <div style="background: white; border-radius: 0.75rem; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden;">
+            <div style="padding: 2.5rem;">
+                <!-- Erro -->
+                {% if form.errors %}
+                <div style="background: #fee2e2; border: 1px solid #fccf1d; border-radius: 0.5rem; padding: 1rem; margin-bottom: 2rem; color: #991b1b; display: flex; align-items: flex-start; gap: 0.75rem;">
+                    <i class="bi bi-exclamation-circle" style="margin-top: 0.2rem; flex-shrink: 0;"></i>
+                    <div>
+                        <strong>Falha na autenticação</strong>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem;">Usuário ou senha incorretos. Por favor, tente novamente.</p>
                     </div>
                 </div>
+                {% endif %}
+
+                <!-- Form -->
+                <form method="post" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    {% csrf_token %}
+                    
+                    <!-- Username -->
+                    <div>
+                        <label for="id_username" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #0f172a; font-size: 0.95rem;">Usuário</label>
+                        <input type="text" class="form-control" id="id_username" name="username" 
+                               style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 0.375rem; font-size: 1rem; transition: all 0.2s;" 
+                               required autofocus>
+                    </div>
+                    
+                    <!-- Password -->
+                    <div>
+                        <label for="id_password" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #0f172a; font-size: 0.95rem;">Senha</label>
+                        <input type="password" class="form-control" id="id_password" name="password" 
+                               style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 0.375rem; font-size: 1rem; transition: all 0.2s;" 
+                               required>
+                    </div>
+                    
+                    <!-- Submit -->
+                    <button type="submit" style="background: #4f46e5; color: white; border: none; padding: 0.85rem 1.5rem; border-radius: 0.375rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s; margin-top: 0.5rem;">
+                        <i class="bi bi-box-arrow-in-right"></i> Entrar
+                    </button>
+                    
+                    <input type="hidden" name="next" value="{{ next }}">
+                </form>
+            </div>
+
+            <!-- Footer - Test Credentials -->
+            <div style="background: #f9fafb; border-top: 1px solid #e2e8f0; padding: 1.5rem; text-align: center; color: #64748b; font-size: 0.85rem;">
+                <strong style="display: block; margin-bottom: 0.75rem; color: #0f172a;">Usuários de teste:</strong>
+                <p style="margin: 0.25rem 0; font-family: 'Courier New', monospace;">admin / admin123</p>
+                <p style="margin: 0.25rem 0; font-family: 'Courier New', monospace;">gerente / gerente123</p>
+                <p style="margin: 0.25rem 0; font-family: 'Courier New', monospace;">func_maria / func123</p>
             </div>
         </div>
+
+
     </div>
 </div>
 
 <style>
-    body {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    #id_username:focus, #id_password:focus {
+        border-color: #4f46e5 !important;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+        outline: none;
+    }
+    
+    button[type="submit"]:hover {
+        background: #4338ca !important;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px rgba(79, 70, 229, 0.3);
     }
 </style>
 {% endblock %}
+

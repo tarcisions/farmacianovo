@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Meu Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .nav-tabs { margin-bottom: 0 !important; }
+    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
+    .tab-pane { display: none; }
+    .tab-pane.show.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-speedometer2" style="color: #4f46e5;"></i> Meu Dashboard
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">
+            Olá, {{ user.first_name }}.
+        </p>
+    </div>
+</div>
+
+<!-- STATS GRID -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+
+    <!-- Total -->
+    <div class="card">
+        <div style="text-align: center;">
+            <div style="font-size: 2.5rem; color: #4f46e5; margin-bottom: 1rem;">
+                <i class="bi bi-list-check"></i>
+            </div>
+            <div style="font-size: 2rem; font-weight: 800;">{{ tarefas_totais }}</div>
+            <p style="margin-top: 0.5rem; font-weight: 600; color: #0f172a;">
+                Total de Tarefas
+            </p>
+        </div>
+    </div>
+
+    <!-- Ativas -->
+    <div class="card">
+        <div style="text-align: center;">
+            <div style="font-size: 2.5rem; color: #10b981; margin-bottom: 1rem;">
+                <i class="bi bi-play-fill"></i>
+            </div>
+            <div style="font-size: 2rem; font-weight: 800;">{{ tarefas_ativas }}</div>
+            <p style="margin-top: 0.5rem; font-weight: 600; color: #0f172a;">
+                Em Andamento
+            </p>
+        </div>
+    </div>
+
+    <!-- Pendentes -->
+    <div class="card">
+        <div style="text-align: center;">
+            <div style="font-size: 2.5rem; color: #f59e0b; margin-bottom: 1rem;">
+                <i class="bi bi-hourglass-split"></i>
+            </div>
+            <div style="font-size: 2rem; font-weight: 800;">{{ tarefas_pendentes }}</div>
+            <p style="margin-top: 0.5rem; font-weight: 600; color: #0f172a;">
+                Pendentes
+            </p>
+        </div>
+    </div>
+
+</div>
+
+<!-- MAIN GRID -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+
+    <!-- TAREFAS -->
+    <div class="card">
+        <div class="card-header" style="border-bottom: 1px solid #e2e8f0; margin-bottom: 1.5rem;">
+            <h3 class="card-title">
+                <i class="bi bi-list-ul" style="color: #4f46e5;"></i>
+                Minhas Tarefas
+            </h3>
+        </div>
+
+        {% if formulas_por_etapa %}
+            
+            {% for etapa, formulas in formulas_por_etapa.items %}
+            
+            <div style="margin-bottom: 1.5rem;">
+                <h5 style="color: #64748b; margin-bottom: 1rem; font-weight: 600;">
+                    {{ etapa.nome }}
+                </h5>
+
+                {% for formula in formulas %}
+                <div style="border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; margin-bottom: 0.75rem;">
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;">
+                        <div>
+                            <p style="margin: 0 0 0.5rem 0; font-weight: 600;">
+                                NRORC {{ formula.pedido_mestre.nrorc }}
+                            </p>
+                            <small style="color: #64748b;">
+                                {{ formula.descricao }}
+                            </small>
+                        </div>
+                        <a href="{% url 'dashboard:detalhe_formula' formula.id %}" class="btn btn-primary btn-sm">
+                            Abrir
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% endfor %}
+
+        {% else %}
+            <div style="background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; padding: 1rem; border-radius: 0.5rem; text-align: center;">
+                Você não possui tarefas no momento.
+            </div>
+        {% endif %}
+
+        <a href="{% url 'dashboard:minhas_formulas' %}" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+            Ver Todas as Tarefas
+        </a>
+    </div>
+
+    <!-- AÇÕES RÁPIDAS -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <div class="card">
+            <h3 class="card-title" style="margin-bottom: 1.5rem;">
+                <i class="bi bi-lightning" style="color: #0d9488;"></i>
+                Ações Rápidas
+            </h3>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <a href="{% url 'dashboard:formulas_disponiveis' %}" class="btn btn-secondary" style="width: 100%; justify-content: flex-start;">
+                    <i class="bi bi-plus-circle"></i> Procurar Novas Tarefas
+                </a>
+
+                <a href="{% url 'dashboard:minhas_formulas' %}" class="btn btn-secondary" style="width: 100%; justify-content: flex-start;">
+                    <i class="bi bi-list-check"></i> Minhas Tarefas
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

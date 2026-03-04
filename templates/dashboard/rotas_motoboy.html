@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Rota Motoboy{% endblock %}
+
+{% block extra_css %}
+<style>
+    .nav-tabs { margin-bottom: 0 !important; }
+    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
+    .tab-pane { display: none; }
+    .tab-pane.show.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-truck" style="color: #4f46e5;"></i> Rota Motoboy
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Pedidos aguardando envio - Selecione quais enviar</p>
+    </div>
+    <span class="badge" style="background: #ede9fe; color: #7c3aed; padding: 1rem; font-size: 1rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+        <i class="bi bi-box-seam"></i> {{ total_pedidos }} Pedido(s) na Fila
+    </span>
+</div>
+
+<!-- ALERTAS -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Lista de Pedidos -->
+    {% if pedidos_em_rota %}
+    <form method="POST" action="{% url 'dashboard:finalizar_rota' 'motoboy' %}">
+        {% csrf_token %}
+        
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="mb-0">Pedidos em Fila de Envio</h5>
+                        <small>Você pode enviar alguns ou todos os pedidos</small>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-light btn-sm" id="btn-enviar">
+                            <i class="bi bi-send"></i> Enviar Selecionados
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="50px">
+                                    <input type="checkbox" class="form-check-input" id="select-all" onchange="toggleAll(this)">
+                                </th>
+                                <th>NRORC</th>
+                                <th>Fórmulas</th>
+
+                                <th>Data Criação</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pedido in pedidos_em_rota %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="form-check-input pedido-checkbox" 
+                                           name="pedidos_selecionados" value="{{ pedido.id }}">
+                                </td>
+                                <td>
+                                    <strong class="text-info">#{{ pedido.nrorc }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ pedido.total_formulas }}</span>
+                                </td>
+                                <td>
+                                    {{ pedido.observacoes|default:"Sem obs." }}
+                                </td>
+                                <td>
+                                    <small>{{ pedido.criado_em|date:"d/m/Y H:i" }}</small>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" data-bs-target="#modal-{{ pedido.id }}">
+                                        <i class="bi bi-eye"></i> Ver
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card-footer bg-light">
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i> 
+                    <strong>Como funciona:</strong> Marque os pedidos que deseja enviar agora e clique em "Enviar Selecionados". 
+                    Os outros ficam na fila esperando.
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Modais para Ver Fórmulas -->
+    {% for pedido in pedidos_em_rota %}
+    <div class="modal fade" id="modal-{{ pedido.id }}" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">
+                        Fórmulas - NRORC {{ pedido.nrorc }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Descrição</th>
+                                    <th>Forma</th>
+                                    <th>Volume</th>
+                                    <th>Quantidade</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for formula in pedido.formulas.all %}
+                                <tr>
+                                    <td><small>#{{ formula.id }}</small></td>
+                                    <td><small>{{ formula.descricao }}</small></td>
+                                    <td><small><span class="badge bg-secondary">{{ formula.get_tipo_forma }}</span></small></td>
+                                    <td><small>{{ formula.get_volume_display }}</small></td>
+                                    <td><small>{{ formula.quantidade }}</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle"></i> <strong>Parabéns!</strong> Nenhum pedido aguardando envio na rota Motoboy. 
+        <a href="{% url 'dashboard:formulas_expedicao' %}">Voltar para expedição</a>
+    </div>
+    {% endif %}
+
+    <!-- Navegação -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <a href="{% url 'dashboard:rotas_sedex' %}" class="btn btn-outline-secondary btn-lg w-100">
+                <i class="bi bi-arrow-right"></i> Ver Rota Sedex
+            </a>
+        </div>
+        <div class="col-md-6">
+            <a href="{% url 'dashboard:formulas_expedicao' %}" class="btn btn-outline-primary btn-lg w-100">
+                <i class="bi bi-arrow-left"></i> Voltar para Expedição
+            </a>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function toggleAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.pedido-checkbox');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    updateButtonState();
+}
+
+document.querySelectorAll('.pedido-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateButtonState);
+});
+
+function updateButtonState() {
+    const checked = document.querySelectorAll('.pedido-checkbox:checked').length;
+    const btn = document.getElementById('btn-enviar');
+    if (checked > 0) {
+        btn.disabled = false;
+        btn.textContent = `✓ Enviar ${checked} Pedido(s)`;
+    } else {
+        btn.disabled = true;
+        btn.textContent = '✗ Selecione pedidos';
+    }
+}
+
+updateButtonState();
+</script>
+{% endblock %}

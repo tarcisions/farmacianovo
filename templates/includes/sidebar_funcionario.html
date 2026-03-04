@@ -1,0 +1,58 @@
+<!-- Funcionário Sidebar -->
+
+<div class="sidebar-title">Minhas Atividades</div>
+<ul style="list-style: none; padding: 0; margin: 0;">
+
+    <li>
+        <a class="sidebar-link {% if request.resolver_match.url_name == 'funcionario' %}active{% endif %}" 
+           href="{% url 'dashboard:funcionario' %}">
+            <i class="bi bi-speedometer2"></i>
+            <span>Dashboard</span>
+        </a>
+    </li>
+
+    <li>
+        <a class="sidebar-link {% if request.resolver_match.url_name == 'formulas_disponiveis' %}active{% endif %}" 
+           href="{% url 'dashboard:formulas_disponiveis' %}">
+            <i class="bi bi-list-check"></i>
+            <span>Fórmulas Disponíveis</span>
+        </a>
+    </li>
+
+</ul>
+
+
+<div class="sidebar-title">Produção</div>
+<ul style="list-style: none; padding: 0; margin: 0;">
+
+    <li>
+        <a class="sidebar-link {% if request.resolver_match.url_name == 'minhas_formulas' %}active{% endif %}" 
+           href="{% url 'dashboard:minhas_formulas' %}">
+            <i class="bi bi-bookmark-check-fill"></i>
+            <span>Minhas Formulas</span>
+        </a>
+    </li>
+
+    <li>
+        <a class="sidebar-link {% if request.resolver_match.url_name == 'controle_qualidade' %}active{% endif %}" 
+           href="{% url 'dashboard:controle_qualidade' %}">
+            <i class="bi bi-clipboard-check"></i>
+            <span>Controle de Qualidade</span>
+        </a>
+    </li>
+
+</ul>
+
+
+<div class="sidebar-title">Logística</div>
+<ul style="list-style: none; padding: 0; margin: 0;">
+
+    <li>
+        <a class="sidebar-link {% if request.resolver_match.url_name == 'rotas_unificada' %}active{% endif %}" 
+           href="{% url 'dashboard:rotas_unificada' %}">
+            <i class="bi bi-truck"></i>
+            <span>Gerenciar Rotas</span>
+        </a>
+    </li>
+
+</ul>

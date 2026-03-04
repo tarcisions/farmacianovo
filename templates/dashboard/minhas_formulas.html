@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Minhas Fórmulas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .nav-tabs { margin-bottom: 0 !important; }
+    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
+    .tab-pane { display: none; }
+    .tab-pane.show.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-start;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-clipboard-check" style="color: #4f46e5;"></i> Fórmulas em Andamento
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Gerenciar suas tarefas de produção</p>
+    </div>
+    <a href="{% url 'dashboard:formulas_disponiveis' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Procurar Novas Fórmulas
+    </a>
+</div>
+
+<!-- ESTATÍSTICAS -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div class="card">
+        <div class="card-body" style="padding: 1.5rem;">
+            <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">
+                <i class="bi bi-play-circle" style="color: #22c55e;"></i> ATIVA
+            </small>
+            <h3 style="margin: 0; font-size: 1.75rem; font-weight: 800;">{{ tarefas_ativas }}/1</h3>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body" style="padding: 1.5rem;">
+            <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">
+                <i class="bi bi-hourglass-split" style="color: #eab308;"></i> PENDENTES
+            </small>
+            <h3 style="margin: 0; font-size: 1.75rem; font-weight: 800;">{{ tarefas_pendentes }}</h3>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body" style="padding: 1.5rem;">
+            <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">
+                <i class="bi bi-list-check" style="color: #06b6d4;"></i> TOTAL
+            </small>
+            <h3 style="margin: 0; font-size: 1.75rem; font-weight: 800;">{{ total_tarefas }}/5</h3>
+        </div>
+    </div>
+</div>
+
+<!-- ALERTA SE NENHUMA TAREFA -->
+{% if not formulas %}
+<div class="card" style="margin-bottom: 2rem; background: #dbeafe; border: 1px solid #7dd3fc; border-left: 4px solid #0284c7;">
+    <div class="card-body" style="padding: 1rem;">
+        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+            <i class="bi bi-info-circle" style="color: #0369a1; font-size: 1.25rem; flex-shrink: 0;"></i>
+            <div>
+                <strong style="color: #0369a1; display: block;">Você não tem nenhuma fórmula em andamento</strong>
+                <p style="color: #0369a1; margin: 0.25rem 0 0 0; font-size: 0.95rem;">
+                    <a href="{% url 'dashboard:formulas_disponiveis' %}" style="color: #0369a1; text-decoration: underline;">Procure novas fórmulas aqui</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- FÓRMULAS POR ETAPA -->
+{% for etapa_nome, dados in formulas_por_etapa.items %}
+<div style="margin-bottom: 3rem;">
+    <h4 style="color: #64748b; margin-bottom: 1.5rem; font-size: 1rem; font-weight: 600;">
+        <i class="bi bi-diagram-3" style="color: #4f46e5;"></i> {{ etapa_nome }}
+    </h4>
+
+    {% if dados.ativa %}
+    <!-- TAREFAS ATIVAS -->
+    <div style="margin-bottom: 2rem;">
+        <h5 style="color: #22c55e; margin-bottom: 1rem; font-size: 0.95rem; font-weight: 600;">
+            <i class="bi bi-play-fill"></i> ATIVA (Trabalhando Agora)
+        </h5>
+        {% for formula in dados.ativa %}
+        <div class="card" style="margin-bottom: 1rem; border-left: 4px solid #22c55e;">
+            <div class="card-body" style="padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                    <div style="flex: 1;">
+                        <!-- Informações da Fórmula -->
+                        <div style="margin-bottom: 1rem;">
+                            <small style="display: inline-block; background: #22c55e; color: white; padding: 0.25rem 0.75rem; border-radius: 0.25rem; font-weight: 600; margin-right: 0.5rem;">ATIVA</small>
+                            <strong style="color: #0f172a;">NRORC {{ formula.pedido_mestre.nrorc }}</strong>
+                        </div>
+                        <p style="color: #64748b; margin: 0.75rem 0; font-size: 0.95rem;">
+                            {{ formula.descricao }}
+                        </p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; color: #64748b; font-size: 0.9rem;">
+                            <div><strong>Volume:</strong> {{ formula.get_volume_display }}</div>
+                            <div><strong>Quantidade:</strong> {{ formula.quantidade }} un.</div>
+                            <div><strong>Forma:</strong> {{ formula.get_tipo_forma }}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 150px;">
+                        <!-- Botões de Ação -->
+                        <a href="{% url 'dashboard:detalhe_formula' formula.id %}" 
+                           class="btn btn-primary" style="font-size: 0.9rem;">
+                            <i class="bi bi-pencil"></i> Trabalhar
+                        </a>
+                        <form method="POST" action="{% url 'dashboard:pausar_tarefa' formula.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-warning" style="width: 100%; font-size: 0.9rem;">
+                                <i class="bi bi-pause-fill"></i> Pausar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if dados.pendentes %}
+    <!-- TAREFAS PENDENTES -->
+    <div>
+        <h5 style="color: #eab308; margin-bottom: 1rem; font-size: 0.95rem; font-weight: 600;">
+            <i class="bi bi-hourglass-split"></i> PENDENTES ({{ dados.pendentes|length }})
+        </h5>
+        {% for formula in dados.pendentes %}
+        <div class="card" style="margin-bottom: 1rem; border-left: 4px solid #eab308; opacity: 0.85;">
+            <div class="card-body" style="padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                    <div style="flex: 1;">
+                        <!-- Informações da Fórmula -->
+                        <div style="margin-bottom: 1rem;">
+                            <small style="display: inline-block; background: #eab308; color: #0f172a; padding: 0.25rem 0.75rem; border-radius: 0.25rem; font-weight: 600; margin-right: 0.5rem;">PENDENTE</small>
+                            <strong style="color: #0f172a;">NRORC {{ formula.pedido_mestre.nrorc }}</strong>
+                        </div>
+                        <p style="color: #64748b; margin: 0.75rem 0; font-size: 0.95rem;">
+                            {{ formula.descricao }}
+                        </p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; color: #64748b; font-size: 0.9rem;">
+                            <div><strong>Volume:</strong> {{ formula.get_volume_display }}</div>
+                            <div><strong>Quantidade:</strong> {{ formula.quantidade }} un.</div>
+                            <div><strong>Forma:</strong> {{ formula.get_tipo_forma }}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 150px;">
+                        <!-- Botões de Ação -->
+                        <a href="{% url 'dashboard:detalhe_formula' formula.id %}" 
+                           class="btn btn-secondary" style="font-size: 0.9rem;">
+                            <i class="bi bi-eye"></i> Ver
+                        </a>
+                        <form method="POST" action="{% url 'dashboard:ativar_tarefa' formula.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success" style="width: 100%; font-size: 0.9rem;">
+                                <i class="bi bi-play-fill"></i> Ativar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+
+<!-- SEM ETAPA -->
+{% if formulas_por_etapa|length == 0 and formulas|length > 0 %}
+<div class="card" style="margin-bottom: 2rem; background: #fed7aa; border: 1px solid #fdba74; border-left: 4px solid #f97316;">
+    <div class="card-body" style="padding: 1rem;">
+        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+            <i class="bi bi-exclamation-triangle" style="color: #9a3412; font-size: 1.25rem; flex-shrink: 0;"></i>
+            <div>
+                <strong style="color: #9a3412; display: block;">Algumas fórmulas não possuem etapa atribuída</strong>
+                <p style="color: #9a3412; margin: 0.25rem 0 0 0; font-size: 0.95rem;">Verifique com o gestor para prosseguir</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

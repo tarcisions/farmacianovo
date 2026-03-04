@@ -168,43 +168,6 @@ class ConfiguracaoPontuacao(models.Model):
         return cls.objects.filter(etapa=etapa, ativa=True).order_by('-versao').first()
 
 
-class RegraProducao(models.Model):
-    etapa = models.ForeignKey(Etapa, on_delete=models.CASCADE, related_name='regras_producao')
-    faixa_min = models.IntegerField()
-    faixa_max = models.IntegerField()
-    pontos_por_unidade = models.DecimalField(max_digits=10, decimal_places=4)
-    pontos_fixos = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    ativo = models.BooleanField(default=True)
-    versao = models.CharField(max_length=20, default='1.0')
-    criado_em = models.DateTimeField(auto_now_add=True)
-    atualizado_em = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['faixa_min']
-        verbose_name = 'Regra de Produção'
-        verbose_name_plural = 'Regras de Produção'
-    
-    def __str__(self):
-        return f"{self.etapa.nome}: {self.faixa_min}-{self.faixa_max} (v{self.versao})"
-    
-    @classmethod
-    def get_versao_ativa(cls, etapa):
-        return cls.objects.filter(etapa=etapa, ativo=True).order_by('-versao')
-    
-    @classmethod
-    def calcular_pontos(cls, etapa, quantidade):
-        regra = cls.objects.filter(
-            etapa=etapa,
-            ativo=True,
-            faixa_min__lte=quantidade,
-            faixa_max__gte=quantidade
-        ).order_by('-versao').first()
-        
-        if regra:
-            return (Decimal(str(quantidade)) * regra.pontos_por_unidade) + regra.pontos_fixos
-        return Decimal('0')
-
-
 class Checklist(models.Model):
     etapa = models.ForeignKey(Etapa, on_delete=models.CASCADE, related_name='checklists')
     nome = models.CharField(max_length=200)
@@ -224,228 +187,6 @@ class Checklist(models.Model):
         return f"{self.etapa.nome} - {self.nome}"
 
 
-class Pedido(models.Model):
-    STATUS_CHOICES = [
-        ('em_fluxo', 'Em Fluxo'),
-        ('concluido', 'Concluído'),
-        ('cancelado', 'Cancelado'),
-    ]
-    
-    STATUS_FILA = [
-        ('ativo', 'Ativo'),
-        ('pendente', 'Pendente'),
-    ]
-    
-    # Campos da API
-    tipo = models.ForeignKey(TipoProduto, on_delete=models.SET_NULL, null=True, blank=True, related_name='pedidos')
-    nome = models.CharField(max_length=200)  # Nome da fórmula/produto
-    quantidade = models.IntegerField()
-    codigo_pedido = models.CharField(max_length=50, unique=False, blank=True)  # Código gerado para referência (não único)
-    
-    # Campos da API externa - IDs separados em colunas
-    nrorc = models.BigIntegerField(unique=True, db_index=True, null=True, blank=True)  # NRORC - Número do RC (identificador único)
-    serieo = models.CharField(max_length=20, blank=True, default='0', help_text='Série do item (SERIEO) vindo da API')
-    id_api = models.CharField(unique=True, db_index=True, null=True, blank=True, max_length=100)  # ID - Combinação NRORC-SERIEO
-    descricao_web = models.TextField(blank=True)  # DESCRICAOWEB
-    price_unit = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)  # PRUNI
-    price_total = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)  # VRTOT
-    data_atualizacao_api = models.DateField(null=True, blank=True)  # DTALT
-    hora_atualizacao_api = models.TimeField(null=True, blank=True)  # HRALT
-    tipo_identificado = models.CharField(
-        max_length=50,
-        default='desconhecido',
-        help_text='Tipo identificado automaticamente da descrição (desconhecido = requer ajuste manual)'
-    )  # Rastreamento de tipo identificado
-    
-    # Campos do sistema
-    etapa_atual = models.ForeignKey(Etapa, on_delete=models.SET_NULL, null=True, blank=True, related_name='pedidos_na_etapa')
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='em_fluxo')
-    funcionario_na_etapa = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='pedidos_assumidos')
-    status_fila = models.CharField(max_length=20, choices=STATUS_FILA, default='ativo', help_text='Status na fila de trabalho (Ativo/Pendente)')
-    tipo_expedicao = models.CharField(
-        max_length=20,
-        choices=[('motoboy', 'Motoboy'), ('sedex', 'Sedex')],
-        null=True,
-        blank=True,
-        help_text='Tipo de expedição selecionado pelo funcionário'
-    )
-    
-    informacoes_gerais = models.TextField(blank=True)
-    criado_em = models.DateTimeField(auto_now_add=True)
-    atualizado_em = models.DateTimeField(auto_now=True)
-    concluido_em = models.DateTimeField(null=True, blank=True)
-    
-    class Meta:
-        ordering = ['-data_atualizacao_api', '-hora_atualizacao_api']
-        verbose_name = 'Pedido'
-        verbose_name_plural = 'Pedidos'
-    
-    def __str__(self):
-        return f"Pedido #{self.codigo_pedido} - {self.nome}"
-    
-    def pode_assumir(self, etapa):
-        if self.etapa_atual != etapa:
-            return False, "Esta não é a etapa atual do pedido"
-        if self.funcionario_na_etapa is not None:
-            return False, "Pedido já assumido por outro funcionário"
-        
-        if etapa.sequencia > 1:
-            etapa_anterior = Etapa.objects.filter(sequencia=etapa.sequencia - 1).first()
-            if etapa_anterior:
-                historico = HistoricoEtapa.objects.filter(
-                    pedido=self,
-                    etapa=etapa_anterior,
-                    timestamp_fim__isnull=False
-                ).exists()
-                if not historico:
-                    return False, "Etapa anterior não foi concluída"
-        
-        return True, "OK"
-    
-    def avancar_etapa(self):
-        if self.etapa_atual:
-            proxima = self.etapa_atual.proxima_etapa()
-            if proxima:
-                self.etapa_atual = proxima
-                self.funcionario_na_etapa = None
-                self.save()
-            else:
-                self.status = 'concluido'
-                self.concluido_em = timezone.now()
-                self.etapa_atual = None
-                self.funcionario_na_etapa = None
-                self.save()
-    
-    def pode_assumir_fila(self, usuario):
-        """Verifica se o usuário pode assumir este pedido"""
-        # Verificar se é etapa de Expedição
-        is_expedicao = self.etapa_atual and self.etapa_atual.nome.lower() == 'expedição'
-        
-        if not is_expedicao:
-            # Máximo 5 pedidos por funcionário (APENAS para etapas diferentes de Expedição)
-            pedidos_count = Pedido.objects.filter(
-                funcionario_na_etapa=usuario,
-                status='em_fluxo'
-            ).count()
-            
-            if pedidos_count >= 5:
-                return False, "Você atingiu o máximo de 5 pedidos simultâneos"
-            
-            # Verificar se há mais de 1 ativo por funcionário (apenas para outras etapas)
-            ativo_count = Pedido.objects.filter(
-                funcionario_na_etapa=usuario,
-                status='em_fluxo',
-                status_fila='ativo'
-            ).count()
-            
-            if ativo_count >= 1 and self.status_fila == 'ativo':
-                return False, "Você já tem 1 pedido ativo. Coloque-o como pendente para ativar este."
-        
-        return True, "OK"
-    
-    def marcar_como_pendente(self, em_sessao_expedicao=False):
-        """Marca o pedido como pendente (não aplicável se tipo_expedicao for motoboy ou sedex)"""
-        # Se tipo_expedicao é motoboy ou sedex, não pode ficar pendente
-        if self.tipo_expedicao in ['motoboy', 'sedex']:
-            return False, "Pedidos com expedição definida (Motoboy/Sedex) não podem ficar pendentes"
-        
-        # Se está em sessão de expedição (tela de motoboy/sedex), não pode ficar pendente
-        if em_sessao_expedicao:
-            return False, "Pedidos em sessão de expedição não podem ficar pendentes"
-        
-        self.status_fila = 'pendente'
-        self.save()
-        return True, "Pedido marcado como pendente"
-    
-    def marcar_como_ativo(self):
-        """Marca o pedido como ativo e coloca outros em pendente (NÃO aplicável para Expedição)"""
-        if not self.funcionario_na_etapa:
-            return False, "Pedido não tem funcionário designado"
-        
-        # Para Expedição, sempre é ativo (sem lógica de pendente)
-        is_expedicao = self.etapa_atual and self.etapa_atual.nome.lower() == 'expedição'
-        if is_expedicao:
-            self.status_fila = 'ativo'
-            self.save()
-            return True, "Pedido está ativo (Expedição não possui status pendente)"
-        
-        # Para outras etapas: colocar todos os outros pedidos deste funcionário como pendente
-        Pedido.objects.filter(
-            funcionario_na_etapa=self.funcionario_na_etapa,
-            status='em_fluxo',
-            status_fila='ativo'
-        ).exclude(id=self.id).update(status_fila='pendente')
-        
-        # Ativar este pedido
-        self.status_fila = 'ativo'
-        self.save()
-        return True, "Pedido ativado com sucesso"
-
-
-class HistoricoEtapa(models.Model):
-    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='historico_etapas')
-    etapa = models.ForeignKey(Etapa, on_delete=models.CASCADE)
-    funcionario = models.ForeignKey(User, on_delete=models.CASCADE)
-    timestamp_inicio = models.DateTimeField(auto_now_add=True)
-    timestamp_fim = models.DateTimeField(null=True, blank=True)
-    versao_configuracao_pontuacao = models.ForeignKey(ConfiguracaoPontuacao, on_delete=models.SET_NULL, null=True, blank=True)
-    quantidade_produzida = models.IntegerField(default=0)
-    pontos_gerados = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    observacoes = models.TextField(blank=True)
-    
-    class Meta:
-        ordering = ['-timestamp_inicio']
-        verbose_name = 'Histórico de Etapa'
-        verbose_name_plural = 'Histórico de Etapas'
-    
-    def __str__(self):
-        return f"{self.pedido} - {self.etapa.nome} - {self.funcionario.username}"
-    
-    @property
-    def tempo_gasto_minutos(self):
-        """Calcula o tempo gasto em minutos"""
-        if self.timestamp_fim and self.timestamp_inicio:
-            delta = self.timestamp_fim - self.timestamp_inicio
-            return int(delta.total_seconds() // 60)
-        return None
-    
-    @property
-    def tempo_gasto_formatado(self):
-        """Retorna tempo gasto formatado como 'Xh Xmin Xseg' ou apenas os campos relevantes"""
-        if self.timestamp_fim and self.timestamp_inicio:
-            delta = self.timestamp_fim - self.timestamp_inicio
-            total_segundos = int(delta.total_seconds())
-            
-            horas = total_segundos // 3600
-            minutos = (total_segundos % 3600) // 60
-            segundos = total_segundos % 60
-            
-            partes = []
-            if horas > 0:
-                partes.append(f"{horas}h")
-            if minutos > 0:
-                partes.append(f"{minutos}min")
-            if segundos > 0 or not partes:  # Mostra segundos sempre que houver, ou se for 0 segundos (menos de 1 minuto)
-                partes.append(f"{segundos}seg")
-            
-            return " ".join(partes)
-        return "-"
-
-
-class ChecklistExecucao(models.Model):
-    historico_etapa = models.ForeignKey(HistoricoEtapa, on_delete=models.CASCADE, related_name='checklists_executados')
-    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE)
-    marcado = models.BooleanField(default=False)
-    pontos_gerados = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    marcado_em = models.DateTimeField(null=True, blank=True)
-    
-    class Meta:
-        verbose_name = 'Execução de Checklist'
-        verbose_name_plural = 'Execuções de Checklists'
-    
-    def __str__(self):
-        return f"{self.checklist.nome} - {'✓' if self.marcado else '✗'}"
-
 
 class PontuacaoFuncionario(models.Model):
     ORIGEM_CHOICES = [
@@ -459,7 +200,6 @@ class PontuacaoFuncionario(models.Model):
     ]
     
     funcionario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pontuacoes')
-    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, null=True, blank=True)
     etapa = models.ForeignKey(Etapa, on_delete=models.CASCADE, null=True, blank=True)
     pontos = models.DecimalField(max_digits=10, decimal_places=2)
     origem = models.CharField(max_length=20, choices=ORIGEM_CHOICES)
@@ -534,24 +274,6 @@ class PontuacaoFixaMensal(models.Model):
     
     def __str__(self):
         return f"{self.nome_regra} - {self.valor} pts ({self.get_tipo_aplicacao_display()})"
-
-
-class HistoricoAplicacaoPontuacaoFixa(models.Model):
-    regra = models.ForeignKey(PontuacaoFixaMensal, on_delete=models.CASCADE, related_name='historico_aplicacoes')
-    funcionario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pontuacoes_fixas_recebidas')
-    mes_referencia = models.DateField()
-    pontos_aplicados = models.DecimalField(max_digits=10, decimal_places=2)
-    aplicado_em = models.DateTimeField(auto_now_add=True)
-    aplicado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='pontuacoes_fixas_aplicadas')
-    justificativa = models.TextField(blank=True)
-    
-    class Meta:
-        ordering = ['-aplicado_em']
-        verbose_name = 'Histórico de Aplicação de Pontuação Fixa'
-        verbose_name_plural = 'Histórico de Aplicações de Pontuação Fixa'
-    
-    def __str__(self):
-        return f"{self.regra.nome_regra} - {self.funcionario.username} - {self.mes_referencia}"
 
 
 class BonusFaixa(models.Model):
@@ -646,11 +368,22 @@ class ConfiguracaoExpedicao(models.Model):
 
 
 class RegistroExpedicao(models.Model):
-    funcionario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='expedicoes')
-    configuracao = models.ForeignKey(ConfiguracaoExpedicao, on_delete=models.CASCADE)
-    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, null=True, blank=True)
+    ROTA_CHOICES = [
+        ('motoboy', 'Motoboy'),
+        ('sedex', 'Sedex'),
+    ]
+    
+    funcionario = models.ForeignKey(User, on_delete=models.CASCADE)
+    configuracao = models.ForeignKey(ConfiguracaoExpedicao, on_delete=models.CASCADE, null=True, blank=True)
+    
+    # Novos campos para PedidoMestre (novo fluxo)
+    pedidos_mestre = models.ManyToManyField('PedidoMestre', blank=True, related_name='registros_expedicao')
+    rota_tipo = models.CharField(max_length=20, choices=ROTA_CHOICES, blank=True)
+    total_pedidos = models.IntegerField(default=0)
+    total_formulas = models.IntegerField(default=0)
+    
     data = models.DateTimeField(auto_now_add=True)
-    pontos_gerados = models.DecimalField(max_digits=10, decimal_places=2)
+    pontos_gerados = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     observacoes = models.TextField(blank=True)
     
     class Meta:
@@ -659,6 +392,8 @@ class RegistroExpedicao(models.Model):
         verbose_name_plural = 'Registros de Expedição'
     
     def __str__(self):
+        if self.pedidos_mestre.exists():
+            return f"Expedição {self.rota_tipo.upper()} - {self.funcionario.username} - {self.data.strftime('%d/%m/%Y %H:%M')}"
         return f"{self.funcionario.username} - {self.configuracao.tipo_expedicao} - {self.data}"
 
 
@@ -997,3 +732,323 @@ class AgendamentoSincronizacao(models.Model):
     def clean(self):
         if not self.executar_todos_os_dias and not self.dias_semana:
             raise ValidationError("Se não executar todos os dias, selecione pelo menos um dia da semana")
+
+
+# ========== NOVOS MODELOS PARA FLUXO COM MÚLTIPLAS FÓRMULAS ==========
+
+class PedidoMestre(models.Model):
+    """
+    Agrupa todas as fórmulas de um pedido pelo NRORC (identificador único)
+    Exemplo: NRORC 73020 pode ter 2 fórmulas (Vitamina A e Ferro)
+    """
+    STATUS_CHOICES = [
+        ('em_processamento', 'Em Processamento'),
+        ('pronto_para_expedicao', 'Pronto para Expedição'),
+        ('em_rota_motoboy', 'Em Rota Motoboy'),
+        ('em_rota_sedex', 'Em Rota Sedex'),
+        ('expedido', 'Expedido'),
+        ('concluido', 'Concluído'),
+        ('cancelado', 'Cancelado'),
+    ]
+    
+    nrorc = models.BigIntegerField(unique=True, db_index=True, help_text="Número RC do pedido (identificador único da API)")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='em_processamento')
+    cliente = models.CharField(max_length=200, blank=True, help_text="Nome do cliente")
+    observacoes = models.TextField(blank=True)
+    
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    concluido_em = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-criado_em']
+        verbose_name = 'Pedido'
+        verbose_name_plural = 'Pedidos'
+    
+    def __str__(self):
+        return f"NRORC {self.nrorc} - {self.status}"
+    
+    @property
+    def total_formulas(self):
+        """Retorna total de fórmulas neste pedido"""
+        return self.formulas.count()
+    
+    @property
+    def formulas_prontas(self):
+        """Retorna quantidade de fórmulas prontas para expedição"""
+        return self.formulas.filter(status='pronto_para_expedicao').count()
+    
+    @property
+    def pode_ir_para_rota(self):
+        """Verifica se o pedido pode ser enviado para rota (todas as fórmulas prontas)"""
+        return self.total_formulas > 0 and self.total_formulas == self.formulas_prontas
+    
+    @property
+    def motivo_nao_pode_ir_rota(self):
+        """Retorna motivo se o pedido não pode ir para rota"""
+        if self.total_formulas == 0:
+            return "Sem fórmulas"
+        
+        pendentes = self.total_formulas - self.formulas_prontas
+        # Buscar status das que não estão prontas
+        formulas_nao_prontas = self.formulas.exclude(status='pronto_para_expedicao').values('status').distinct()
+        status_list = ', '.join([f.get('status') for f in formulas_nao_prontas])
+        
+        return f"Aguardando conclusão de {pendentes} fórmula(s) em: {status_list}"
+    
+    def validar_e_atualizar_status(self):
+        """Valida se todas as fórmulas estão prontas e atualiza status do PedidoMestre"""
+        total = self.total_formulas
+        prontas = self.formulas_prontas
+        
+        if total == 0:
+            return  # Nenhuma fórmula ainda
+        
+        if prontas == total:
+            # Todas prontas!
+            self.status = 'pronto_para_expedicao'
+        else:
+            # Parcialmente
+            self.status = 'em_processamento'
+        
+        self.save()
+
+
+class FormulaItem(models.Model):
+    """
+    Representa uma fórmula específica dentro de um pedido
+    Exemplo: VITAMINA A + D3 + TCM (10ML) é uma FormulaItem do NRORC 73020
+    Cada fórmula segue o fluxo completo: Triagem → Produção → Qualidade → Expedição
+    """
+    STATUS_CHOICES = [
+        ('em_triagem', 'Em Triagem'),
+        ('em_producao', 'Em Produção'),
+        ('em_qualidade', 'Em Qualidade'),
+        ('pronto_para_expedicao', 'Pronto para Expedição'),
+        ('expedido', 'Expedido'),
+        ('cancelado', 'Cancelado'),
+    ]
+    
+    pedido_mestre = models.ForeignKey(PedidoMestre, on_delete=models.CASCADE, related_name='formulas')
+    
+    # Dados da fórmula
+    descricao = models.TextField(help_text="Descrição da fórmula (ex: VITAMINA A + D3 + TCM | 10ML)")
+    quantidade = models.IntegerField(default=1, help_text="Quantidade de unidades")
+    volume_ml = models.CharField(max_length=20, blank=True, help_text="Volume em ML se aplicável (ex: 10ML, 60ML)")
+    
+    # Dados da API
+    id_api = models.CharField(max_length=100, unique=True, db_index=True, help_text="ID único da fórmula vindo da API")
+    serieo = models.CharField(max_length=20, blank=True, help_text="Série do item (SERIEO)")
+    price_unit = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Preço unitário")
+    price_total = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Preço total")
+    
+    # Status do fluxo
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='em_triagem')
+    etapa_atual = models.ForeignKey(Etapa, on_delete=models.SET_NULL, null=True, blank=True)
+    funcionario_na_etapa = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='formulas_assumidas')
+    
+    # Status de tarefa (ativo/pendente) - limite de 5 tarefas, apenas 1 ativa
+    STATUS_TAREFA_CHOICES = [
+        ('disponivel', 'Disponível'),
+        ('ativo', 'Ativo'),
+        ('pendente', 'Pendente'),
+        ('concluido', 'Concluído'),
+    ]
+    eh_tarefa_ativa = models.BooleanField(default=False, help_text="Indica se é a tarefa ativa do funcionário nesta etapa")
+    
+    # Rastreamento
+    data_criacao_api = models.DateField(null=True, blank=True, help_text="Data de criação no sistema da API")
+    data_atualizacao_api = models.DateField(null=True, blank=True, help_text="Data de atualização no sistema da API")
+    datetime_atualizacao_api = models.DateTimeField(null=True, blank=True, db_index=True, help_text="Data + Hora de atualização na API (DTALT + HRALT)")
+    
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    concluido_em = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['pedido_mestre', 'criado_em']
+        verbose_name = 'Item de Fórmula'
+        verbose_name_plural = 'Itens de Fórmula'
+    
+    def __str__(self):
+        return f"{self.pedido_mestre.nrorc} - {self.descricao[:50]}"
+    
+    def get_tipo_forma(self):
+        """Extrai o tipo de forma (cápsula, líquido, etc.) da descrição"""
+        if not self.descricao:
+            return "Desconhecido"
+        
+        desc_upper = self.descricao.upper()
+        
+        if "CAPSULA" in desc_upper or "CAP" in desc_upper:
+            return "Cápsula"
+        elif "SACHE" in desc_upper or "SACHÊ" in desc_upper or "ENVELOPE" in desc_upper:
+            return "Sachê"
+        elif "ML" in desc_upper or "LIQUIDO" in desc_upper or "LÍQUIDO" in desc_upper or "XAROPE" in desc_upper or "TCM LIQUIDO" in desc_upper:
+            return "Líquido"
+        elif "CREME" in desc_upper or "POMADA" in desc_upper or "GEL" in desc_upper:
+            return "Creme"
+        elif "LOÇÃO" in desc_upper or "LOCION" in desc_upper:
+            return "Loção"
+        elif "SHAMPOO" in desc_upper:
+            return "Shampoo"
+        elif "SHOT" in desc_upper:
+            return "Shot"
+        elif "ÓVULO" in desc_upper or "OVULO" in desc_upper:
+            return "Óvulo"
+        elif "SUBLINGUAL" in desc_upper or "PASTILHA" in desc_upper:
+            return "Comprimido"
+        elif "OLEOSA" in desc_upper or "OLEOSO" in desc_upper:
+            return "Oleosa"
+        elif "GOMA" in desc_upper or "GUMMY" in desc_upper:
+            return "Goma"
+        elif "CHOCOLATE" in desc_upper:
+            return "Chocolate"
+        elif "FILME" in desc_upper:
+            return "Filme"
+        else:
+            return "Outro"
+    
+    def get_volume_display(self):
+        """Retorna o volume/quantidade formatado dependendo do tipo de forma"""
+        import re
+        
+        if not self.descricao:
+            return self.volume_ml or "-"
+        
+        desc_upper = self.descricao.upper()
+        
+        # Para cápsulas, buscar padrão NNNCAP (ex: 30CAP)
+        if "CAPSULA" in desc_upper or "CAP" in desc_upper:
+            # Procura por padrão como "30CAP", "60CAP", etc.
+            match = re.search(r'(\d+)\s*CAP(?:SULA)?', desc_upper)
+            if match:
+                return f"{match.group(1)} cápsulas"
+            # Se tiver quantidade de unidades, retorna
+            if self.quantidade:
+                return f"{self.quantidade} unidades"
+            return "-"
+        
+        # Para sachês, retorna quantidade
+        elif "SACHE" in desc_upper or "SACHÊ" in desc_upper or "ENVELOPE" in desc_upper:
+            if self.quantidade:
+                return f"{self.quantidade} sachês"
+            return "-"
+        
+        # Para outros, retorna volume_ml
+        else:
+            return self.volume_ml or "-"
+    
+    def avancar_etapa(self):
+        """Avança a fórmula para a próxima etapa"""
+        if self.etapa_atual:
+            proxima = self.etapa_atual.proxima_etapa()
+            if proxima:
+                self.etapa_atual = proxima
+                # Atualizar status
+                if proxima.nome.lower() == 'triagem':
+                    self.status = 'em_triagem'
+                elif proxima.nome.lower() == 'produção':
+                    self.status = 'em_producao'
+                elif proxima.nome.lower() == 'qualidade':
+                    self.status = 'em_qualidade'
+                elif proxima.nome.lower() == 'expedição':
+                    self.status = 'pronto_para_expedicao'
+                    # Validar pedido mestre
+                    self.pedido_mestre.validar_e_atualizar_status()
+                
+                self.funcionario_na_etapa = None
+                self.save()
+            else:
+                # Não há próxima etapa - fórmula expedida
+                self.status = 'expedido'
+                self.etapa_atual = None
+                self.funcionario_na_etapa = None
+                self.concluido_em = timezone.now()
+                self.save()
+                # Validar pedido mestre
+                self.pedido_mestre.validar_e_atualizar_status()
+
+
+class HistoricoEtapaFormula(models.Model):
+    """
+    Rastreia cada passagem de uma fórmula por uma etapa
+    Similar ao HistoricoEtapa, mas versionado para FormulaItem
+    """
+    formula = models.ForeignKey(FormulaItem, on_delete=models.CASCADE, related_name='historico_etapas')
+    etapa = models.ForeignKey(Etapa, on_delete=models.CASCADE)
+    funcionario = models.ForeignKey(User, on_delete=models.CASCADE)
+    
+    timestamp_inicio = models.DateTimeField(auto_now_add=True)
+    timestamp_fim = models.DateTimeField(null=True, blank=True)
+    
+    # Pontuação
+    pontos_gerados = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Pontos ganhos nesta etapa")
+    
+    # Expedição
+    rota_tipo = models.CharField(
+        max_length=20,
+        choices=[('motoboy', 'Motoboy'), ('sedex', 'Sedex')],
+        null=True, blank=True,
+        help_text="Tipo de rota (apenas preenchido na Expedição)"
+    )
+    
+    observacoes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-timestamp_inicio']
+        verbose_name = 'Histórico de Etapa da Fórmula'
+        verbose_name_plural = 'Históricos de Etapas das Fórmulas'
+    
+    def __str__(self):
+        return f"{self.formula.pedido_mestre.nrorc} - {self.etapa.nome} - {self.funcionario.username}"
+    
+    @property
+    def tempo_gasto_minutos(self):
+        """Calcula tempo gasto em minutos"""
+        if self.timestamp_fim and self.timestamp_inicio:
+            delta = self.timestamp_fim - self.timestamp_inicio
+            return int(delta.total_seconds() // 60)
+        return None
+    
+    @property
+    def tempo_gasto_formatado(self):
+        """Retorna tempo gasto formatado"""
+        if self.timestamp_fim and self.timestamp_inicio:
+            delta = self.timestamp_fim - self.timestamp_inicio
+            total_segundos = int(delta.total_seconds())
+            
+            horas = total_segundos // 3600
+            minutos = (total_segundos % 3600) // 60
+            segundos = total_segundos % 60
+            
+            partes = []
+            if horas > 0:
+                partes.append(f"{horas}h")
+            if minutos > 0:
+                partes.append(f"{minutos}min")
+            if segundos > 0 or not partes:
+                partes.append(f"{segundos}seg")
+            
+            return " ".join(partes)
+        return "-"
+
+
+class ChecklistExecucaoFormula(models.Model):
+    """
+    Rastreia execução de checklists para fórmulas (novo fluxo)
+    Similar ao ChecklistExecucao, mas vinculado a HistoricoEtapaFormula
+    """
+    historico_etapa = models.ForeignKey(HistoricoEtapaFormula, on_delete=models.CASCADE, related_name='checklists_executados')
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE)
+    marcado = models.BooleanField(default=False)
+    pontos_gerados = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    marcado_em = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        verbose_name = 'Execução de Checklist de Fórmula'
+        verbose_name_plural = 'Execuções de Checklists de Fórmulas'
+        unique_together = ('historico_etapa', 'checklist')
+    
+    def __str__(self):
+        return f"{self.checklist.nome} - {'OK' if self.marcado else 'PENDENTE'}"

@@ -3,161 +3,190 @@
 
 {% block title %}Lista de Funcionários{% endblock %}
 
+{% block sidebar %}
+{% include "includes/sidebar_gerente_admin.html" %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: var(--space-lg); border-bottom: 2px solid var(--border-color-light); margin-bottom: var(--space-xl); }
+.page-header-title { font-size: 2rem; font-weight: 800; color: var(--text-primary); margin: 0; }
+.text-muted-secondary { color: var(--text-secondary); font-size: 0.95rem; }
+.mb-6 { margin-bottom: var(--space-xl); }
+.nav-tabs { margin-bottom: 0 !important; }
+.tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
+.tab-pane { display: none; }
+.tab-pane.show.active { display: block; }
+
+/* Ajustes da tabela */
+.table td, .table th { vertical-align: middle; padding: 0.75rem 1rem; }
+.table th { font-weight: 600; color: #0f172a; }
+.btn-icon { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.4rem 0.8rem; border: 1px solid #e2e8f0; border-radius: 0.4rem; font-size: 0.85rem; background: #fff; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">Funcionários</h3>
-                </div>
-                <div class="card-body">
-                    <!-- Busca e Filtros -->
-                    <form method="get" class="mb-3">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="input-group">
-                                    <input type="text" class="form-control" name="busca" 
-                                           placeholder="Buscar por nome, email ou usuário..." 
-                                           value="{{ busca }}">
-                                    <button class="btn btn-primary" type="submit">
-                                        <i class="fas fa-search"></i> Buscar
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <select class="form-select" name="ordenar" onchange="this.form.submit()">
-                                    <option value="-pontos" {% if ordenar == '-pontos' %}selected{% endif %}>
-                                        Ordenar por: Pontos (Maior)
-                                    </option>
-                                    <option value="nome" {% if ordenar == 'nome' %}selected{% endif %}>
-                                        Ordenar por: Nome (A-Z)
-                                    </option>
-                                    <option value="-data_joined" {% if ordenar == '-data_joined' %}selected{% endif %}>
-                                        Ordenar por: Data (Mais Recente)
-                                    </option>
-                                </select>
-                            </div>
-                        </div>
-                    </form>
-
-                    {% if page_obj %}
-                    <!-- Tabela de Funcionários -->
-                    <div class="table-responsive">
-                        <table class="table table-hover table-striped">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>#</th>
-                                    <th>Nome Completo</th>
-                                    <th>Usuário</th>
-                                    <th>Email</th>
-                                    <th class="text-center">Status</th>
-                                    <th class="text-right">Pontos Mês</th>
-                                    <th class="text-center">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in page_obj %}
-                                <tr>
-                                    <td>
-                                        <img src="https://ui-avatars.com/api/?name={{ item.usuario.first_name|default:item.usuario.username }}&background=random&size=32" 
-                                             alt="{{ item.usuario.username }}" class="rounded-circle" width="32" height="32">
-                                    </td>
-                                    <td>
-                                        <strong>{{ item.usuario.get_full_name|default:item.usuario.username }}</strong>
-                                    </td>
-                                    <td>
-                                        <code>{{ item.usuario.username }}</code>
-                                    </td>
-                                    <td>{{ item.usuario.email }}</td>
-                                    <td class="text-center">
-                                        {% if item.usuario.is_active %}
-                                        <span class="badge bg-success">Ativo</span>
-                                        {% else %}
-                                        <span class="badge bg-danger">Inativo</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-right">
-                                        <strong class="text-primary">{{ item.pontos|floatformat:1 }}</strong>
-                                    </td>
-                                    <td class="text-center">
-                                        <a href="{% url 'dashboard:perfil_funcionario_outro' item.usuario.id %}" 
-                                           class="btn btn-sm btn-info" title="Ver Perfil">
-                                            <i class="fas fa-eye"></i> Ver
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Paginação -->
-                    {% if page_obj.has_other_pages %}
-                    <nav aria-label="Paginação" class="mt-4">
-                        <ul class="pagination justify-content-center">
-                            {% if page_obj.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?{% if busca %}busca={{ busca }}&{% endif %}{% if ordenar %}ordenar={{ ordenar }}&{% endif %}page=1">
-                                    Primeira
-                                </a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?{% if busca %}busca={{ busca }}&{% endif %}{% if ordenar %}ordenar={{ ordenar }}&{% endif %}page={{ page_obj.previous_page_number }}">
-                                    Anterior
-                                </a>
-                            </li>
-                            {% endif %}
-
-                            {% for num in page_obj.paginator.page_range %}
-                            {% if page_obj.number == num %}
-                            <li class="page-item active">
-                                <span class="page-link">{{ num }}</span>
-                            </li>
-                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                            <li class="page-item">
-                                <a class="page-link" href="?{% if busca %}busca={{ busca }}&{% endif %}{% if ordenar %}ordenar={{ ordenar }}&{% endif %}page={{ num }}">
-                                    {{ num }}
-                                </a>
-                            </li>
-                            {% endif %}
-                            {% endfor %}
-
-                            {% if page_obj.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?{% if busca %}busca={{ busca }}&{% endif %}{% if ordenar %}ordenar={{ ordenar }}&{% endif %}page={{ page_obj.next_page_number }}">
-                                    Próxima
-                                </a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?{% if busca %}busca={{ busca }}&{% endif %}{% if ordenar %}ordenar={{ ordenar }}&{% endif %}page={{ page_obj.paginator.num_pages }}">
-                                    Última
-                                </a>
-                            </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
-
-                    <p class="text-muted text-center mt-2">
-                        Mostrando {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ page_obj.paginator.count }} funcionários
-                    </p>
-                    {% endif %}
-                    {% else %}
-                    <div class="alert alert-info" role="alert">
-                        Nenhum funcionário encontrado.
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-people-fill" style="color: #4f46e5;"></i> Funcionários
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Gerenciar e acompanhar a equipe de produção</p>
     </div>
 </div>
 
-<style>
-    code {
-        background-color: #f4f4f4;
-        padding: 2px 6px;
-        border-radius: 3px;
-    }
-</style>
+<!-- FILTROS -->
+<div class="card mb-6">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <h3 class="card-title">
+            <i class="bi bi-funnel" style="color: #4f46e5;"></i>
+            Filtros
+        </h3>
+    </div>
+    <div style="padding: 1.5rem;">
+        <form method="get" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: flex-end;">
+            <div>
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Buscar funcionário</label>
+                <input type="text" class="form-control" name="busca" value="{{ busca }}" placeholder="Nome, email ou usuário...">
+            </div>
+            <div>
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Ordenar por</label>
+                <select class="form-select" name="ordenar" onchange="this.form.submit()">
+                    <option value="-pontos" {% if ordenar == '-pontos' %}selected{% endif %}>Pontos (Maior)</option>
+                    <option value="nome" {% if ordenar == 'nome' %}selected{% endif %}>Nome (A-Z)</option>
+                    <option value="-data_joined" {% if ordenar == '-data_joined' %}selected{% endif %}>Mais Recente</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Buscar
+                </button>
+                <a href="{% url 'dashboard:lista_funcionarios' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Limpar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Funcionários Table -->
+{% if page_obj %}
+<div class="card">
+    <div class="card-header" style="border-bottom: 1px solid var(--border-color-light);">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 2rem;">
+            <h3 class="card-title" style="margin: 0;"><i class="bi bi-people-fill"></i> Lista de Funcionários</h3>
+            <small style="color: #64748b; white-space: nowrap; padding: 0.5rem 1rem; background: #f1f5f9; border-radius: 0.375rem;">
+                {% if is_paginated %}
+                Exibindo {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ page_obj.paginator.count }}
+                {% else %}
+                Total: {{ page_obj.paginator.count }}
+                {% endif %}
+            </small>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div style="overflow-x: auto;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width: 8%;">#</th>
+                        <th style="width: 25%;">Nome</th>
+                        <th style="width: 20%;">Usuário</th>
+                        <th style="width: 22%;">Email</th>
+                        <th style="width: 12%; text-align: center;">Status</th>
+                        <th style="width: 15%; text-align: right;">Pontos (Mês)</th>
+                        <th style="width: 12%; text-align: center;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in page_obj %}
+                    <tr>
+                        <td style="text-align: center;">
+                            <img src="https://ui-avatars.com/api/?name={{ item.usuario.first_name|default:item.usuario.username }}&background=random&size=40" 
+                                 alt="{{ item.usuario.username }}" 
+                                 style="width: 40px; height: 40px; border-radius: 50%;">
+                        </td>
+                        <td>
+                            <strong style="color: var(--text-primary);">{{ item.usuario.get_full_name|default:item.usuario.username }}</strong>
+                        </td>
+                        <td>
+                            <code style="background-color: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: var(--color-primary-600);">{{ item.usuario.username }}</code>
+                        </td>
+                        <td style="color: var(--text-secondary); font-size: 0.95rem;">{{ item.usuario.email }}</td>
+                        <td style="text-align: center;">
+                            {% if item.usuario.is_active %}
+                                <span class="badge badge-success" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                                    <i class="bi bi-check-circle"></i> Ativo
+                                </span>
+                            {% else %}
+                                <span class="badge badge-danger" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                                    <i class="bi bi-x-circle"></i> Inativo
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <strong style="color: var(--color-primary-600); font-size: 1.1rem;">{{ item.pontos|floatformat:1 }}</strong>
+                        </td>
+                        <td style="text-align: center;">
+                            <a href="{% url 'dashboard:perfil_funcionario_outro' item.usuario.id %}" 
+                               class="btn btn-icon" 
+                               title="Ver Perfil">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Paginação -->
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer" style="background-color: var(--color-gray-50); border-top: 1px solid var(--border-color-light); padding: var(--space-lg);">
+        <nav aria-label="Paginação de funcionários">
+            <ul style="display: flex; justify-content: center; gap: var(--space-xs); list-style: none; padding: 0; margin: 0; flex-wrap: wrap;">
+                {% if page_obj.has_previous %}
+                <li>
+                    <a class="btn btn-outline-primary btn-sm" href="?{% if busca %}busca={{ busca }}&{% endif %}{% if ordenar %}ordenar={{ ordenar }}&{% endif %}page=1">Primeira</a>
+                </li>
+                <li>
+                    <a class="btn btn-outline-primary btn-sm" href="?{% if busca %}busca={{ busca }}&{% endif %}{% if ordenar %}ordenar={{ ordenar }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li>
+                    <button class="btn btn-primary btn-sm" disabled>{{ num }}</button>
+                </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li>
+                    <a class="btn btn-outline-primary btn-sm" href="?{% if busca %}busca={{ busca }}&{% endif %}{% if ordenar %}ordenar={{ ordenar }}&{% endif %}page={{ num }}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li>
+                    <a class="btn btn-outline-primary btn-sm" href="?{% if busca %}busca={{ busca }}&{% endif %}{% if ordenar %}ordenar={{ ordenar }}&{% endif %}page={{ page_obj.next_page_number }}">Próxima</a>
+                </li>
+                <li>
+                    <a class="btn btn-outline-primary btn-sm" href="?{% if busca %}busca={{ busca }}&{% endif %}{% if ordenar %}ordenar={{ ordenar }}&{% endif %}page={{ page_obj.paginator.num_pages }}">Última</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        <div style="text-align: center; color: var(--text-secondary); font-size: 0.9rem; margin-top: var(--space-md);">
+            Mostrando {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ page_obj.paginator.count }} funcionários
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="alert alert-info" role="alert" style="border: none; background-color: var(--color-info-50); color: var(--color-info-700); border-left: 4px solid var(--color-info-600); padding: var(--space-lg);">
+    <i class="bi bi-info-circle"></i> Nenhum funcionário encontrado.
+</div>
+{% endif %}
 {% endblock %}

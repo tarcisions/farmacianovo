@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ped idos Prontos para Expedição{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 text-dark">
+                Pedidos Prontos para Expedição
+            </h1>
+            <p class="text-muted">Selecione um pedido para executar a expedição</p>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" name="nrorc" class="form-control" placeholder="NRORC" 
+                           value="{{ filtro_nrorc }}">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" name="cliente" class="form-control" placeholder="Cliente" 
+                           value="{{ filtro_cliente }}">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary">Filtrar</button>
+                    <a href="{% url 'dashboard:pedidos_prontos_expedicao' %}" class="btn btn-outline-secondary">Limpar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Lista de Pedidos -->
+    {% if page_obj %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>NRORC</th>
+                    <th>Cliente</th>
+                    <th>Fórmulas</th>
+                    <th>Status</th>
+                    <th>Criado em</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pedido in page_obj %}
+                <tr>
+                    <td><strong>{{ pedido.nrorc }}</strong></td>
+                    <td>{{ pedido.observacoes|truncatewords:5 }}</td>
+                    <td>
+                        <span class="badge bg-info">{{ pedido.total_formulas }} fórmula(s)</span>
+                        <span class="badge bg-success">{{ pedido.formulas_prontas }} pronta(s)</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-primary">{{ pedido.get_status_display }}</span>
+                    </td>
+                    <td>{{ pedido.criado_em|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <a href="{% url 'dashboard:detalhe_pedido_expedicao' pedido.id %}" class="btn btn-sm btn-primary">
+                            Expedir
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Paginação -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Paginação">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">Primeira</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+            </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        Nenhum pedido pronto para expedição no momento.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

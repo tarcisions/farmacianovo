@@ -1,0 +1,136 @@
+{# 
+  COMPONENTES REUTILIZÁVEIS - Includes para Admin
+  Usar em templates para manter consistência visual
+#}
+
+{# ========================================
+   1. PAGE HEADER - Cabeçalho da Página
+   ======================================== #}
+{% macro page_header(title, icon='', action_btn=None) %}
+<div class="page-header">
+    <div class="page-header-title">
+        {% if icon %}<i class="bi {{ icon }}"></i>{% endif %}
+        <h1>{{ title }}</h1>
+    </div>
+    {% if action_btn %}
+    <div class="page-header-actions">
+        {{ action_btn }}
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{# ========================================
+   2. STAT CARD - Card com Estatística
+   ======================================== #}
+{% macro stat_card(label, value, icon='bi-box', color='primary') %}
+<div class="card card-stat stat-card">
+    <div class="card-body">
+        <div class="stat-card-content">
+            <div class="stat-card-info">
+                <div class="stat-card-label">{{ label }}</div>
+                <div class="stat-card-value">{{ value }}</div>
+            </div>
+            <div class="stat-card-icon {{ color }}">
+                <i class="bi {{ icon }}"></i>
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{# ========================================
+   3. EMPTY STATE - Estado Vazio
+   ======================================== #}
+{% macro empty_state(icon='bi-inbox', title='Nenhum resultado', description='') %}
+<div class="empty-state">
+    <div class="empty-state-icon">
+        <i class="bi {{ icon }}"></i>
+    </div>
+    <h3 class="empty-state-title">{{ title }}</h3>
+    {% if description %}
+    <p class="empty-state-description">{{ description }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{# ========================================
+   4. BADGE STATUS - Status com Cor
+   ======================================== #}
+{% macro status_badge(status, text) %}
+{% if status == 'success' %}
+    <span class="badge bg-success">{{ text }}</span>
+{% elif status == 'warning' %}
+    <span class="badge bg-warning">{{ text }}</span>
+{% elif status == 'danger' %}
+    <span class="badge bg-danger">{{ text }}</span>
+{% elif status == 'info' %}
+    <span class="badge bg-info">{{ text }}</span>
+{% else %}
+    <span class="badge bg-primary">{{ text }}</span>
+{% endif %}
+{% endmacro %}
+
+{# ========================================
+   5. BUTTON PRIMARY - Botão Principal
+   ======================================== #}
+{% macro btn_primary(text, url='#', icon='', classes='') %}
+<a href="{{ url }}" class="btn btn-primary {{ classes }}">
+    {% if icon %}<i class="bi {{ icon }}"></i>{% endif %}
+    {{ text }}
+</a>
+{% endmacro %}
+
+{# ========================================
+   6. BUTTON SECONDARY - Botão Secundário
+   ======================================== #}
+{% macro btn_secondary(text, url='#', icon='', classes='') %}
+<a href="{{ url }}" class="btn btn-secondary {{ classes }}">
+    {% if icon %}<i class="bi {{ icon }}"></i>{% endif %}
+    {{ text }}
+</a>
+{% endmacro %}
+
+{# ========================================
+   7. TABLE HEADER - Cabeçalho de Tabela
+   ======================================== #}
+{% macro table_header(title, description='', button=None) %}
+<div class="card-header d-flex justify-content-between align-items-center">
+    <div>
+        <h5 class="mb-0">{{ title }}</h5>
+        {% if description %}<small class="text-secondary">{{ description }}</small>{% endif %}
+    </div>
+    {% if button %}{{ button }}{% endif %}
+</div>
+{% endmacro %}
+
+{# ========================================
+   8. LOADING SPINNER
+   ======================================== #}
+{% macro loader() %}
+<div class="d-flex justify-content-center align-items-center py-5">
+    <div class="spinner"></div>
+    <span class="ms-2 text-secondary">Carregando...</span>
+</div>
+{% endmacro %}
+
+{# ========================================
+   9. ALERT INFO
+   ======================================== #}
+{% macro alert_info(message) %}
+<div class="alert alert-info d-flex align-items-center" role="alert">
+    <i class="bi bi-info-circle me-2"></i>
+    {{ message }}
+</div>
+{% endmacro %}
+
+{# ========================================
+   10. FORM GROUP - Agrupamento de Form
+   ======================================== #}
+{% macro form_group(label, input_html, help_text='') %}
+<div class="mb-3">
+    <label class="form-label">{{ label }}</label>
+    {{ input_html }}
+    {% if help_text %}<small class="form-text">{{ help_text }}</small>{% endif %}
+</div>
+{% endmacro %}

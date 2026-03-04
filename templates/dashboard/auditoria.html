@@ -1,197 +1,147 @@
-{% extends "base.html" %}
-{% load static %}
+{% extends 'base.html' %}
 
-{% block title %}Auditoria - Sistema de Produção{% endblock %}
+{% block title %}Auditoria{% endblock %}
 
-{% block sidebar %}
-{% include "includes/sidebar_gerente_admin.html" %}
+{% block extra_css %}
+<style>
+    .nav-tabs { margin-bottom: 0 !important; }
+    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
+    .tab-pane { display: none; }
+    .tab-pane.show.active { display: block; }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h2 class="mb-0">
-                <i class="bi bi-shield-check"></i> Logs de Auditoria
-            </h2>
-            <p class="text-muted">Total de registros: <strong>{{ total_logs }}</strong></p>
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-shield-check" style="color: #4f46e5;"></i> Logs de Auditoria
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Rastreamento de todas as ações do sistema</p>
+    </div>
+</div>
+
+<!-- FILTROS -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <h3 class="card-title">
+            <i class="bi bi-funnel" style="color: #4f46e5;"></i>
+            Filtros
+        </h3>
+    </div>
+
+    <div style="padding: 1.5rem;">
+        <form method="get" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div>
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Usuário</label>
+                <input type="text" class="form-control" name="usuario" value="{{ usuario_filtro|default:'' }}" placeholder="Filtrar por usuário">
+            </div>
+            
+            <div>
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Ação</label>
+                <select class="form-select" name="acao">
+                    <option value="">Todas as ações</option>
+                    {% for acao in acoes_disponiveis %}
+                        <option value="{{ acao }}" {% if acao == acao_filtro %}selected{% endif %}>{{ acao|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Data Início</label>
+                <input type="date" class="form-control" name="data_inicio" value="{{ data_inicio|default:'' }}">
+            </div>
+            
+            <div>
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Data Fim</label>
+                <input type="date" class="form-control" name="data_fim" value="{{ data_fim|default:'' }}">
+            </div>
+
+            <div style="display: flex; align-items: flex-end; gap: 0.5rem; grid-column: auto / span 2;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'dashboard:auditoria' %}" class="btn btn-secondary" style="flex: 1;">
+                    <i class="bi bi-x-circle"></i> Limpar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- LOGS TABLE -->
+<div class="card">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 2rem;">
+            <h3 class="card-title" style="margin: 0;">
+                <i class="bi bi-list-ul" style="color: #4f46e5;"></i> Registros de Auditoria
+            </h3>
+            <small style="color: #64748b; white-space: nowrap; padding: 0.5rem 1rem; background: #f1f5f9; border-radius: 0.375rem;">
+                {% if is_paginated %}
+                Exibindo {{ logs.start_index }} a {{ logs.end_index }} de {{ logs.paginator.count }}
+                {% else %}
+                Total: {{ logs|length }}
+                {% endif %}
+            </small>
         </div>
     </div>
 
-    <!-- Filtros -->
-    <div class="card mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">Filtros de Busca</h5>
-        </div>
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-3">
-                    <label for="usuario" class="form-label">Usuário</label>
-                    <input type="text" class="form-control" id="usuario" name="usuario" 
-                           value="{{ usuario_filtro }}" placeholder="Nome de usuário">
-                </div>
-                
-                <div class="col-md-3">
-                    <label for="acao" class="form-label">Ação</label>
-                    <select class="form-select" id="acao" name="acao">
-                        <option value="">Todas as ações</option>
-                        {% for acao in acoes_disponiveis %}
-                            <option value="{{ acao }}" {% if acao == acao_filtro %}selected{% endif %}>
-                                {{ acao|title }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="data_inicio" class="form-label">Data Início</label>
-                    <input type="date" class="form-control" id="data_inicio" name="data_inicio" 
-                           value="{{ data_inicio }}">
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="data_fim" class="form-label">Data Fim</label>
-                    <input type="date" class="form-control" id="data_fim" name="data_fim" 
-                           value="{{ data_fim }}">
-                </div>
-                
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-search"></i> Filtrar
-                    </button>
-                </div>
-            </form>
-
-            <form method="get" class="mt-3">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label for="busca" class="form-label">Busca Geral</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="busca" name="busca" 
-                                   value="{{ busca }}" placeholder="Procurar em descrição, usuário ou IP...">
-                            <button class="btn btn-outline-secondary" type="submit">
-                                <i class="fas fa-search"></i>
-                            </button>
-                            {% if busca or usuario_filtro or acao_filtro or data_inicio or data_fim %}
-                                <a href="{% url 'dashboard:auditoria' %}" class="btn btn-outline-danger">
-                                    <i class="fas fa-times"></i> Limpar Filtros
-                                </a>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Tabela de Logs -->
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width: 18%;">Data/Hora</th>
+                    <th style="width: 15%;">Usuário</th>
+                    <th style="width: 15%;">Ação</th>
+                    <th style="width: 35%;">Descrição</th>
+                    <th style="width: 17%;">IP Address</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if logs %}
+                    {% for log in logs %}
                     <tr>
-                        <th>Data/Hora</th>
-                        <th>Usuário</th>
-                        <th>Ação</th>
-                        <th>Descrição</th>
-                        <th>IP Address</th>
+                        <td><small style="color: #64748b;">{{ log.timestamp|date:"d/m/Y H:i:s" }}</small></td>
+                        <td>
+                            <strong>{{ log.usuario.get_full_name|default:log.usuario.username }}</strong>
+                            <br><small style="color: #64748b;">@{{ log.usuario.username }}</small>
+                        </td>
+                        <td><span class="badge" style="background: #dbeafe; color: #0369a1;">{{ log.acao|title }}</span></td>
+                        <td><small style="color: #475569;">{{ log.descricao|truncatewords:15 }}</small></td>
+                        <td><code style="background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.85rem;">{{ log.ip_address }}</code></td>
                     </tr>
-                </thead>
-                <tbody>
-                    {% if logs %}
-                        {% for log in logs %}
-                            <tr>
-                                <td>
-                                    <small class="text-muted">
-                                        {{ log.timestamp|date:"d/m/Y H:i:s" }}
-                                    </small>
-                                </td>
-                                <td>
-                                    <strong>{{ log.usuario.get_full_name|default:log.usuario.username }}</strong>
-                                    <br>
-                                    <small class="text-muted">@{{ log.usuario.username }}</small>
-                                </td>
-                                <td>
-                                    <span class="badge bg-info">{{ log.acao|title }}</span>
-                                </td>
-                                <td>
-                                    <small>{{ log.descricao }}</small>
-                                    {% if log.dados_adicionais %}
-                                        <br>
-                                        <small class="text-muted" style="word-break: break-all;">
-                                            {{ log.dados_adicionais|truncatewords:50 }}
-                                        </small>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <code>{{ log.ip_address }}</code>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="5" class="text-center py-4">
-                                <i class="fas fa-inbox text-muted fa-2x"></i>
-                                <p class="text-muted mt-2">Nenhum log encontrado com os filtros aplicados</p>
-                            </td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
+                    {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: #64748b;">
+                        <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.3;"></i>
+                        <p style="margin-top: 1rem;">Nenhum log encontrado</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
     </div>
 
-    <!-- Paginação -->
+    <!-- PAGINAÇÃO -->
     {% if logs.has_other_pages %}
-        <nav aria-label="Paginação" class="mt-4">
-            <ul class="pagination justify-content-center">
-                {% if logs.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if acao_filtro %}&acao={{ acao_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}{% if busca %}&busca={{ busca }}{% endif %}">
-                            Primeira
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ logs.previous_page_number }}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if acao_filtro %}&acao={{ acao_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}{% if busca %}&busca={{ busca }}{% endif %}">
-                            Anterior
-                        </a>
-                    </li>
-                {% endif %}
+    <div style="padding: 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: center; gap: 0.5rem;">
+        {% if logs.has_previous %}
+            <a href="?page=1" class="btn btn-secondary btn-sm">«</a>
+            <a href="?page={{ logs.previous_page_number }}" class="btn btn-secondary btn-sm">‹</a>
+        {% endif %}
 
-                <li class="page-item active">
-                    <span class="page-link">
-                        Página {{ logs.number }} de {{ logs.paginator.num_pages }}
-                    </span>
-                </li>
+        <span style="padding: 0.5rem 1rem; display: flex; align-items: center; color: #64748b;">
+            Página {{ logs.number }} de {{ logs.paginator.num_pages }}
+        </span>
 
-                {% if logs.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ logs.next_page_number }}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if acao_filtro %}&acao={{ acao_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}{% if busca %}&busca={{ busca }}{% endif %}">
-                            Próxima
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ logs.paginator.num_pages }}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if acao_filtro %}&acao={{ acao_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}{% if busca %}&busca={{ busca }}{% endif %}">
-                            Última
-                        </a>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
+        {% if logs.has_next %}
+            <a href="?page={{ logs.next_page_number }}" class="btn btn-secondary btn-sm">›</a>
+            <a href="?page={{ logs.paginator.num_pages }}" class="btn btn-secondary btn-sm">»</a>
+        {% endif %}
+    </div>
     {% endif %}
 </div>
 
-<style>
-    table code {
-        background-color: #f5f5f5;
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-size: 0.85em;
-    }
-    
-    .badge {
-        font-size: 0.8em;
-        padding: 4px 8px;
-    }
-</style>
 {% endblock %}

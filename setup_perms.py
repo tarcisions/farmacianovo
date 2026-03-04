@@ -10,9 +10,8 @@ from django.contrib.contenttypes.models import ContentType
 from core.models import (
     Checklist, Etapa, Laboratorio, TipoProduto, 
     PontuacaoPorAtividade, ConfiguracaoPontuacao,
-    Pedido, HistoricoEtapa, ChecklistExecucao,
     PontuacaoFuncionario, Penalizacao,
-    PontuacaoFixaMensal, HistoricoAplicacaoPontuacaoFixa,
+    PontuacaoFixaMensal,
     BonusFaixa, HistoricoBonusMensal,
     ConfiguracaoExpedicao, RegistroExpedicao
 )
@@ -21,9 +20,6 @@ from core.models import (
 GERENTE_MODELS = [
     Etapa,
     Checklist,
-    Pedido,
-    HistoricoEtapa,
-    ChecklistExecucao,
     PontuacaoFuncionario,
     ConfiguracaoPontuacao,
     ConfiguracaoExpedicao,

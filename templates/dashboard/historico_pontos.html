@@ -1,50 +1,75 @@
-
 {% extends 'base.html' %}
 
 {% block title %}Histórico de Pontos{% endblock %}
 
+{% block extra_css %}
+<style>
+    .nav-tabs { margin-bottom: 0 !important; }
+    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
+    .tab-pane { display: none; }
+    .tab-pane.show.active { display: block; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h1 class="h3 fw-bold"><i class="bi bi-clock-history text-primary"></i> Histórico Completo de Pontos</h1>
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+        <i class="bi bi-clock-history" style="color: #4f46e5;"></i> Histórico Completo de Pontos
+    </h1>
+    <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Acompanhamento detalhado de todas as pontuações ganhas e perdidas</p>
 </div>
 
+<!-- HISTÓRICO TABLE -->
 <div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Data/Hora</th>
-                        <th>Origem</th>
-                        <th>ID Pedido</th>
-                        <th>Etapa</th>
-                        <th>Pontos</th>
-                        <th>Observação</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for ponto in historico %}
-                    <tr>
-                        <td><small>{{ ponto.timestamp|date:"d/m/Y H:i" }}</small></td>
-                        <td><span class="badge bg-secondary">{{ ponto.get_origem_display }}</span></td>
-                        <td>{% if ponto.pedido %}<code class="text-primary">{{ ponto.pedido.nrorc }}</code>{% else %}-{% endif %}</td>
-                        <td>{% if ponto.etapa %}<small>{{ ponto.etapa.nome }}</small>{% else %}-{% endif %}</td>
-                        <td>
-                            <span class="badge {% if ponto.pontos >= 0 %}bg-success{% else %}bg-danger{% endif %}">
-                                {{ ponto.pontos|floatformat:2 }} pts
-                            </span>
-                        </td>
-                        <td><small class="text-muted">{{ ponto.observacao|default:"-" }}</small></td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center text-muted py-4">Nenhuma pontuação registrada</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <h3 class="card-title">
+            <i class="bi bi-list-ul" style="color: #4f46e5;"></i>
+            Registros de Pontuação
+        </h3>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width: 18%;">Data/Hora</th>
+                    <th style="width: 15%;">Origem</th>
+                    <th style="width: 20%;">Etapa</th>
+                    <th style="width: 12%;">Pontos</th>
+                    <th style="width: 35%;">Observação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ponto in historico %}
+                <tr>
+                    <td><small style="color: #64748b;">{{ ponto.timestamp|date:"d/m/Y H:i" }}</small></td>
+                    <td><span class="badge" style="background: #f3e8ff; color: #7c3aed;">{{ ponto.get_origem_display }}</span></td>
+                    <td>
+                        {% if ponto.etapa %}
+                            <small style="color: #475569;">{{ ponto.etapa.nome }}</small>
+                        {% else %}
+                            <small style="color: #cbd5e1;">-</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge" style="background: {% if ponto.pontos >= 0 %}#dcfce7; color: #16a34a;{% else %}#fee2e2; color: #dc2626;{% endif %}">
+                            {% if ponto.pontos >= 0 %}+{% endif %}{{ ponto.pontos|floatformat:1 }} pts
+                        </span>
+                    </td>
+                    <td><small style="color: #64748b;">{{ ponto.observacao|default:"-" }}</small></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: #64748b;">
+                        <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.3;"></i>
+                        <p style="margin-top: 1rem;">Nenhuma pontuação registrada</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
+
 {% endblock %}

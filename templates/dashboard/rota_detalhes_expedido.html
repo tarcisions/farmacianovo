@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detalhes da Rota{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-dark">
+                <i class="bi bi-truck"></i> Detalhes da Rota
+            </h1>
+            <p class="text-muted">Pedido NRORC #{{ pedido.nrorc }} para {{ rota }}</p>
+        </div>
+        <div>
+            <a href="{% url 'dashboard:rotas_unificada' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <!-- Informações do Pedido -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Informações do Pedido</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <dt class="text-muted">NRORC</dt>
+                            <dd><strong class="text-info" style="font-size: 1.2rem;">#{{ pedido.nrorc }}</strong></dd>
+                        </div>
+                        <div class="col-md-4">
+                            <dt class="text-muted">Rota</dt>
+                            <dd>
+                                {% if rota == 'Motoboy' %}
+                                    <span class="badge bg-warning text-dark" style="font-size: 1rem;">
+                                        <i class="bi bi-truck"></i> {{ rota }}
+                                    </span>
+                                {% elif rota == 'Sedex' %}
+                                    <span class="badge bg-secondary" style="font-size: 1rem;">
+                                        <i class="bi bi-box-seam"></i> {{ rota }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">{{ rota }}</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div class="col-md-4">
+                            <dt class="text-muted">Status</dt>
+                            <dd><span class="badge bg-info">{{ pedido.get_status_display }}</span></dd>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <dt class="text-muted">Data de Criação</dt>
+                            <dd><strong>{{ pedido.criado_em|date:"d/m/Y H:i" }}</strong></dd>
+                        </div>
+                        <div class="col-md-4">
+                            <dt class="text-muted">Total de Fórmulas</dt>
+                            <dd><strong>{{ total_formulas }}</strong></dd>
+                        </div>
+                        <div class="col-md-4">
+                            <dt class="text-muted">Observações</dt>
+                            <dd>{{ pedido.observacoes|default:"Nenhuma" }}</dd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fórmulas -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="bi bi-capsule"></i> Fórmulas Neste Pedido
+                <span class="badge bg-info ms-2">{{ total_formulas }}</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if formulas %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Descrição</th>
+                            <th>Forma</th>
+                            <th>Volume (ml)</th>
+                            <th>Quantidade</th>
+                            <th>Status</th>
+                            <th>Histórico</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for formula in formulas %}
+                        <tr>
+                            <td><small class="text-muted">#{{ formula.id }}</small></td>
+                            <td>
+                                <strong>{{ formula.descricao }}</strong>
+                                <br>
+                                <small class="text-muted">Criada em {{ formula.criado_em|date:"d/m/Y" }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ formula.get_tipo_forma }}</span>
+                            </td>
+                            <td>{{ formula.get_volume_display }}</td>
+                            <td>{{ formula.quantidade }}</td>
+                            <td>
+                                {% if formula.status == 'expedido' %}
+                                    <span class="badge bg-success">{{ formula.get_status_display }}</span>
+                                {% elif formula.status == 'pronto_para_expedicao' %}
+                                    <span class="badge bg-info">{{ formula.get_status_display }}</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">{{ formula.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'dashboard:historico_etapas' formula.id %}" 
+                                   class="btn btn-sm btn-outline-info" title="Ver histórico de etapas">
+                                    <i class="bi bi-clock-history"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Sumário -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Fórmulas Totais</h6>
+                            <h3 class="text-info">{{ total_formulas }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Status Pedido</h6>
+                            <h5 class="text-dark">{{ pedido.get_status_display }}</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Data da Rota</h6>
+                            <h5 class="text-dark">{{ pedido.criado_em|date:"d/m/Y" }}</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Tipo de Rota</h6>
+                            <h5 class="text-dark">
+                                {% if rota == 'Motoboy' %}
+                                    <i class="bi bi-truck"></i> Motoboy
+                                {% elif rota == 'Sedex' %}
+                                    <i class="bi bi-box-seam"></i> Sedex
+                                {% else %}
+                                    {{ rota }}
+                                {% endif %}
+                            </h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Nenhuma fórmula encontrada para este pedido.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Ações -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <a href="{% url 'dashboard:rotas_unificada' %}" class="btn btn-secondary btn-lg">
+                <i class="bi bi-arrow-left"></i> Voltar para Gerenciamento de Rotas
+            </a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

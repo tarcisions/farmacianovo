@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Histórico de Etapas - NRORC {{ formula.pedido_mestre.nrorc }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .nav-tabs { margin-bottom: 0 !important; }
+    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
+    .tab-pane { display: none; }
+    .tab-pane.show.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-clock-history" style="color: #4f46e5;"></i> Histórico de Etapas
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">
+            NRORC {{ formula.pedido_mestre.nrorc }} • {{ formula.descricao }}
+        </p>
+    </div>
+    <a href="{% url 'dashboard:detalhe_formula' formula.id %}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+</div>
+
+<!-- RESUMO DA FÓRMULA -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-body" style="padding: 1.5rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 2rem;">
+            <div>
+                <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Volume</small>
+                <strong>{{ formula.get_volume_display }}</strong>
+            </div>
+            <div>
+                <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Quantidade</small>
+                <strong>{{ formula.quantidade }} unidades</strong>
+            </div>
+            <div>
+                <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Forma</small>
+                <span class="badge" style="background: #dbeafe; color: #0369a1;">{{ formula.get_tipo_forma }}</span>
+            </div>
+            <div>
+                <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Status Atual</small>
+                <span class="badge" style="background: #ede9fe; color: #7c3aed;">{{ formula.get_status_display }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TIMELINE DO HISTÓRICO -->
+    {% if etapas_com_duracao %}
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-list-check"></i> Percurso Completo ({{ total_etapas_completadas }}/{{ etapas_com_duracao|length }} etapas)
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="timeline">
+                {% for item in etapas_com_duracao %}
+                <div class="timeline-item mb-4">
+                    <!-- Ponto da Timeline -->
+                    <div class="timeline-marker">
+                        <div class="timeline-circle {% if item.historico.timestamp_fim %}completed{% else %}in-progress{% endif %}">
+                            {% if item.historico.timestamp_fim %}
+                            <i class="bi bi-check-lg"></i>
+                            {% else %}
+                            <i class="bi bi-clock"></i>
+                            {% endif %}
+                        </div>
+
+                        <!-- Conteúdo -->
+                        <div class="card {% if item.historico.timestamp_fim %}border-success{% else %}border-warning{% endif %}">
+                            <div class="card-body">
+                                <!-- Etapa -->
+                                <h6 class="card-title mb-2">
+                                    {{ item.historico.etapa.nome }}
+                                    {% if item.historico.timestamp_fim %}
+                                    <span class="badge bg-success">Concluída</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark">Em Andamento</span>
+                                    {% endif %}
+                                </h6>
+
+                                <!-- Detalhes -->
+                                <div class="row text-muted small">
+                                    <div class="col-md-4">
+                                        <strong>Funcionário:</strong><br>
+                                        <i class="bi bi-person"></i>
+                                        {{ item.historico.funcionario.first_name }} {{ item.historico.funcionario.last_name }}
+                                        <br>
+                                        <small class="text-secondary">@{{ item.historico.funcionario.username }}</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>Duração:</strong><br>
+                                        <i class="bi bi-hourglass-split"></i> {{ item.tempo }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>Data:</strong><br>
+                                        <i class="bi bi-calendar"></i> {{ item.historico.timestamp_inicio|date:"d/m/Y" }}<br>
+                                        <small>{{ item.historico.timestamp_inicio|time:"H:i" }} - {{ item.historico.timestamp_fim|time:"H:i"|default:"-" }}</small>
+                                    </div>
+                                </div>
+
+                                <!-- Pontos -->
+                                {% if item.historico.pontos_gerados > 0 %}
+                                <div class="mt-2 pt-2 border-top">
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-star"></i> {{ item.historico.pontos_gerados }} pontos
+                                    </span>
+                                </div>
+                                {% endif %}
+
+                                <!-- Observações -->
+                                {% if item.historico.observacoes %}
+                                <div class="mt-2 pt-2 border-top text-muted small">
+                                    <strong>Observações:</strong><br>
+                                    {{ item.historico.observacoes }}
+                                </div>
+                                {% endif %}
+
+                                <!-- Rota de Expedição -->
+                                {% if item.historico.rota_tipo %}
+                                <div class="mt-2 pt-2 border-top">
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-box-seam"></i> Rota: {{ item.historico.get_rota_tipo_display }}
+                                    </span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Esta fórmula ainda não passou por nenhuma etapa. Histórico será preenchido conforme a fórmula avança.
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+    .timeline {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .timeline-item {
+        position: relative;
+    }
+    
+    .timeline-marker {
+        position: relative;
+        padding-left: 50px;
+    }
+    
+    .timeline-circle {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+    }
+    
+    .timeline-circle.completed {
+        background-color: #28a745;
+    }
+    
+    .timeline-circle.in-progress {
+        background-color: #ffc107;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 14px;
+        top: 40px;
+        width: 2px;
+        height: 100%;
+        background-color: #dee2e6;
+    }
+    
+    .timeline-item:last-child::before {
+        display: none;
+    }
+</style>
+{% endblock %}

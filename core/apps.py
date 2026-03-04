@@ -20,3 +20,10 @@ class CoreConfig(AppConfig):
                 logger.info("Scheduler de sincronização iniciado automaticamente")
         except Exception as e:
             logger.error(f"Erro ao inicializar scheduler: {str(e)}")
+        
+        # Importar signals para ativar recarregamento automático
+        try:
+            import core.signals  # noqa
+            logger.info("Signals de agendamento registrados")
+        except Exception as e:
+            logger.error(f"Erro ao registrar signals: {str(e)}")

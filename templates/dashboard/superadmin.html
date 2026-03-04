@@ -1,241 +1,419 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Dashboard - Superadmin{% endblock %}
 
-{% block sidebar %}
-{% include "includes/sidebar_gerente_admin.html" %}
+{% block extra_css %}
+<style>
+    .nav-tabs { margin-bottom: 0 !important; }
+    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
+    .tab-pane { display: none; }
+    .tab-pane.show.active { display: block; }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 fw-bold"><i class="bi bi-gear-fill text-primary"></i> Dashboard Administrativo</h1>
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
     <div>
-        <span class="badge badge-custom bg-danger">Superadmin</span>
-        <a href="{% url 'dashboard:exportar_relatorio_superadmin' %}" class="btn btn-primary btn-sm ms-2">
-            <i class="bi bi-download"></i> Exportar Dados
-        </a>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">Dashboard Administrativo</h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Visão geral completa da operação do sistema</p>
     </div>
+    <a href="{% url 'dashboard:exportar_relatorio_superadmin' %}" class="btn btn-primary">
+        <i class="bi bi-download"></i> Exportar Dados
+    </a>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body d-flex align-items-center justify-content-between p-3">
-                <div>
-                    <div class="text-muted small mb-1">Total de Pedidos</div>
-                    <div class="h4 mb-0 fw-bold text-primary">{{ total_pedidos }}</div>
-                </div>
-                <div class="text-primary" style="font-size: 2.5rem; opacity: 0.8;">
-                    <i class="bi bi-boxes"></i>
-                </div>
+<!-- STATS GRID -->
+<div class="grid-4">
+    <!-- Stat Card: Pedidos -->
+    <div class="card">
+        <div class="stat-card">
+            <div class="stat-value">
+                <div class="stat-label">Pedidos</div>
+                <div class="stat-number">{{ total_pedidos }}</div>
+                <div class="stat-subtitle">Todos os pedidos</div>
+            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #e0e7ff, #f0f4ff); color: #4f46e5;">
+                <i class="bi bi-boxes"></i>
             </div>
         </div>
     </div>
+
+    <!-- Stat Card: Usuários -->
+    <div class="card">
+        <div class="stat-card">
+            <div class="stat-value">
+                <div class="stat-label">Usuários</div>
+                <div class="stat-number">{{ total_usuarios }}</div>
+                <div class="stat-subtitle">Membros ativos</div>
+            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #dcfce7, #f0fdf4); color: #16a34a;">
+                <i class="bi bi-people-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stat Card: Etapas -->
+    <div class="card">
+        <div class="stat-card">
+            <div class="stat-value">
+                <div class="stat-label">Etapas</div>
+                <div class="stat-number">{{ total_etapas }}</div>
+                <div class="stat-subtitle">Fluxos ativos</div>
+            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #ccfbf1, #f0fdfa); color: #0d9488;">
+                <i class="bi bi-diagram-3"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stat Card: Pontuação -->
+    <div class="card">
+        <div class="stat-card">
+            <div class="stat-value">
+                <div class="stat-label">Pontuação</div>
+                <div class="stat-number">{{ pontuacao_total_mes|floatformat:2 }}</div>
+                <div class="stat-subtitle">Mês atual</div>
+            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #fef3c7, #fffbeb); color: #d97706;">
+                <i class="bi bi-star-fill"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="grid-2">
+    <!-- RECENT ACTIVITY CARD -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="bi bi-activity" style="color: #4f46e5;"></i>
+                Atividades Recentes
+            </h3>
+            <a href="{% url 'dashboard:auditoria' %}" class="btn btn-ghost btn-sm">Ver Tudo</a>
+        </div>
+
+        <div class="table-wrapper-sm">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Usuário</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs_recentes %}
+                    <tr>
+                        <td>
+                            <span class="badge badge-primary">{{ log.timestamp|date:"d/m H:i" }}</span>
+                        </td>
+                        <td>{{ log.usuario.username|default:"Sistema" }}</td>
+                        <td>
+                            {% if log.acao == 'login' %}
+                                <span class="badge badge-success">Login</span>
+                            {% elif log.acao == 'logout' %}
+                                <span class="badge badge-warning">Logout</span>
+                            {% elif log.acao == 'penalizacao' %}
+                                <span class="badge badge-danger">Penalidade</span>
+                            {% else %}
+                                <span class="badge badge-primary">{{ log.acao }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center text-muted" style="padding: 2rem;">
+                            Nenhuma atividade
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- QUICK ACTIONS CARD -->
+    <div class="card">
+        <h3 class="card-title mb-3">
+            <i class="bi bi-lightning" style="color: #0d9488;"></i>
+            Ações Rápidas
+        </h3>
+
+        <div class="card-content">
+            <a href="{% url 'core:usuarios' %}" class="btn btn-secondary" style="width: 100%; justify-content: flex-start;">
+                <i class="bi bi-people"></i>
+                Gerenciar Usuários
+            </a>
+            <a href="{% url 'core:criar_usuario' %}" class="btn btn-secondary" style="width: 100%; justify-content: flex-start;">
+                <i class="bi bi-plus-circle"></i>
+                Novo Usuário
+            </a>
+            <a href="{% url 'dashboard:auditoria' %}" class="btn btn-secondary" style="width: 100%; justify-content: flex-start;">
+                <i class="bi bi-shield-check"></i>
+                Ver Auditoria
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- CHARTS GRID -->
+<div class="grid-2" id="chartsContainer" 
+     data-total-pedidos="{{ total_pedidos }}"
+     data-total-usuarios="{{ total_usuarios }}"
+     data-total-etapas="{{ total_etapas }}">
     
-    <div class="col-md-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body d-flex align-items-center justify-content-between p-3">
-                <div>
-                    <div class="text-muted small mb-1">Usuários Cadastrados</div>
-                    <div class="h4 mb-0 fw-bold text-success">{{ total_usuarios }}</div>
-                </div>
-                <div class="text-success" style="font-size: 2.5rem; opacity: 0.8;">
-                    <i class="bi bi-people-fill"></i>
-                </div>
-            </div>
+    <!-- PEDIDOS CHART -->
+    <div class="card">
+        <h3 class="card-title mb-3">
+            <i class="bi bi-pie-chart" style="color: #4f46e5;"></i>
+            Status dos Pedidos
+        </h3>
+        <div style="position: relative; height: 300px;">
+            <canvas id="pedidosChart"></canvas>
         </div>
     </div>
-    
-    <div class="col-md-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body d-flex align-items-center justify-content-between p-3">
-                <div>
-                    <div class="text-muted small mb-1">Etapas Ativas</div>
-                    <div class="h4 mb-0 fw-bold text-info">{{ total_etapas }}</div>
-                </div>
-                <div class="text-info" style="font-size: 2.5rem; opacity: 0.8;">
-                    <i class="bi bi-diagram-3"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body d-flex align-items-center justify-content-between p-3">
-                <div>
-                    <div class="text-muted small mb-1">Pontos (Mês)</div>
-                    <div class="h4 mb-0 fw-bold text-warning">{{ pontuacao_total_mes }}</div>
-                </div>
-                <div class="text-warning" style="font-size: 2.5rem; opacity: 0.8;">
-                    <i class="bi bi-star-fill"></i>
-                </div>
-            </div>
+
+    <!-- METRICS CHART -->
+    <div class="card">
+        <h3 class="card-title mb-3">
+            <i class="bi bi-bar-chart" style="color: #16a34a;"></i>
+            Métricas do Sistema
+        </h3>
+        <div style="position: relative; height: 300px;">
+            <canvas id="metricsChart"></canvas>
         </div>
     </div>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-lg-8">
-        <div class="card shadow-sm">
-            <div class="card-header bg-light border-bottom">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="bi bi-table"></i> Últimas Atividades</h5>
-                    <a href="{% url 'dashboard:auditoria' %}" class="btn btn-sm btn-outline-primary">
-                        Ver Tudo
-                    </a>
-                </div>
-            </div>
-            <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
-                <div class="table-responsive">
-                    <table class="table table-hover table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Data/Hora</th>
-                                <th>Usuário</th>
-                                <th>Ação</th>
-                                <th>Descrição</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for log in logs_recentes %}
-                            <tr>
-                                <td><small>{{ log.timestamp|date:"d/m H:i" }}</small></td>
-                                <td><span class="badge bg-secondary">{{ log.usuario.username|default:"Sistema" }}</span></td>
-                                <td>
-                                    {% if log.acao == 'login' %}
-                                    <span class="badge bg-success"><i class="bi bi-box-arrow-in-right"></i></span>
-                                    {% elif log.acao == 'logout' %}
-                                    <span class="badge bg-warning"><i class="bi bi-box-arrow-right"></i></span>
-                                    {% elif log.acao == 'penalizacao' %}
-                                    <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i></span>
-                                    {% else %}
-                                    <span class="badge bg-info"><i class="bi bi-info-circle"></i></span>
-                                    {% endif %}
-                                </td>
-                                <td><small class="text-muted">{{ log.descricao|truncatewords:15 }}</small></td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4" class="text-center text-muted py-3">Nenhuma atividade</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+<!-- JSON Data Scripts -->
+{{ pedidos_por_status|json_script:"dashboard-pedidos-data" }}
 
-    <div class="col-lg-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-light border-bottom">
-                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Ações Rápidas</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{% url 'core:usuarios' %}" class="btn btn-outline-primary">
-                        <i class="bi bi-people"></i> Gerenciar Usuários
-                    </a>
-                    <a href="{% url 'core:criar_usuario' %}" class="btn btn-outline-success">
-                        <i class="bi bi-plus-circle"></i> Novo Usuário
-                    </a>
-                    <a href="{% url 'dashboard:auditoria' %}" class="btn btn-outline-info">
-                        <i class="bi bi-shield-check"></i> Ver Auditoria
-                    </a>
-                    <a href="{% url 'dashboard:exportar_relatorio_superadmin' %}" class="btn btn-outline-warning">
-                        <i class="bi bi-download"></i> Exportar Dados
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-3">
-    <div class="col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-light border-bottom">
-                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Status dos Pedidos</h5>
-            </div>
-            <div class="card-body d-flex justify-content-center align-items-center" style="min-height: 300px;">
-                <canvas id="pedidosStatusChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-light border-bottom">
-                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Métricas do Sistema</h5>
-            </div>
-            <div class="card-body d-flex justify-content-center align-items-center" style="min-height: 300px;">
-                <canvas id="visaoGeralChart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
 <script>
-const ctxStatus = document.getElementById('pedidosStatusChart').getContext('2d');
-new Chart(ctxStatus, {
-    type: 'doughnut',
-    data: {
-        labels: [{% for item in pedidos_por_status %}'{{ item.status }}'{% if not forloop.last %},{% endif %}{% endfor %}],
-        datasets: [{
-            data: [{% for item in pedidos_por_status %}{{ item.total }}{% if not forloop.last %},{% endif %}{% endfor %}],
-            backgroundColor: [
-                'rgba(245, 158, 11, 0.8)',
-                'rgba(6, 182, 212, 0.8)',
-                'rgba(16, 185, 129, 0.8)',
-                'rgba(239, 68, 68, 0.8)',
-                'rgba(107, 114, 128, 0.8)'
-            ]
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                position: 'bottom'
-            }
-        }
-    }
-});
+    let pedidosChartInstance = null;
+    let metricsChartInstance = null;
 
-const ctxGeral = document.getElementById('visaoGeralChart').getContext('2d');
-new Chart(ctxGeral, {
-    type: 'bar',
-    data: {
-        labels: ['Pedidos', 'Usuários', 'Etapas'],
-        datasets: [{
-            label: 'Quantidade',
-            data: [{{ total_pedidos }}, {{ total_usuarios }}, {{ total_etapas }}],
-            backgroundColor: [
-                'rgba(79, 70, 229, 0.8)',
-                'rgba(16, 185, 129, 0.8)',
-                'rgba(6, 182, 212, 0.8)'
-            ],
-            borderRadius: 8
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                display: false
+    function loadDashboardData() {
+        // Recuperar dados do script JSON
+        const scriptElement = document.getElementById('dashboard-pedidos-data');
+        let pedidosPorStatus = [];
+        
+        if (scriptElement) {
+            try {
+                pedidosPorStatus = JSON.parse(scriptElement.textContent);
+                console.log('✓ Dados de pedidos carregados do json_script:', pedidosPorStatus);
+            } catch(e) {
+                console.error('✗ Erro ao fazer parse do json_script:', e);
+                pedidosPorStatus = [];
             }
-        },
-        scales: {
-            y: {
-                beginAtZero: true
+        } else {
+            console.error('✗ Script elemento #dashboard-pedidos-data não encontrado');
+        }
+
+        const container = document.getElementById('chartsContainer');
+        const totalPedidos = container ? parseInt(container.getAttribute('data-total-pedidos')) || 0 : 0;
+        const totalUsuarios = container ? parseInt(container.getAttribute('data-total-usuarios')) || 0 : 0;
+        const totalEtapas = container ? parseInt(container.getAttribute('data-total-etapas')) || 0 : 0;
+
+        console.log('Dashboard Data:', { pedidosPorStatus, totalPedidos, totalUsuarios, totalEtapas });
+
+        return {
+            pedidosPorStatus: pedidosPorStatus,
+            totalPedidos: totalPedidos,
+            totalUsuarios: totalUsuarios,
+            totalEtapas: totalEtapas
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // DEBUG: Mostrar exatamente o que está nos data attributes
+        const container = document.getElementById('chartsContainer');
+        const scriptElement = document.getElementById('dashboard-pedidos-data');
+        console.log('=== DEBUG DASHBOARD ===');
+        console.log('Container encontrado:', !!container);
+        console.log('Script elemento encontrado:', !!scriptElement);
+        if (scriptElement) {
+            console.log('Conteúdo do script:', scriptElement.textContent);
+        }
+        if (container) {
+            console.log('data-total-pedidos:', container.getAttribute('data-total-pedidos'));
+            console.log('data-total-usuarios:', container.getAttribute('data-total-usuarios'));
+            console.log('data-total-etapas:', container.getAttribute('data-total-etapas'));
+        }
+        
+        if (typeof Chart !== 'undefined') {
+            setTimeout(() => {
+                initializePedidosChart();
+                initializeMetricsChart();
+            }, 200);
+        }
+    });
+
+    function initializePedidosChart() {
+        const ctx = document.getElementById('pedidosChart');
+        if (!ctx) {
+            console.error('Canvas elemento #pedidosChart não encontrado');
+            return;
+        }
+
+        try {
+            const data = loadDashboardData();
+            const dados = data.pedidosPorStatus || [];
+            
+            console.log('Dados para gráfico de pedidos:', dados);
+            
+            // Extrair labels e values
+            let labels = [];
+            let dataValues = [];
+            
+            if (dados.length > 0) {
+                labels = dados.map(item => {
+                    // Mapear codes para labels amigáveis
+                    const statusMap = {
+                        'pendente': 'Pendente',
+                        'em_processamento': 'Em Processamento',
+                        'em_triagem': 'Em Triagem',
+                        'pronto_para_expedicao': 'Pronto para Expedição',
+                        'concluido': 'Concluído',
+                        'expedido': 'Expedido',
+                        'cancelado': 'Cancelado'
+                    };
+                    return statusMap[item.status] || item.status || 'Sem Status';
+                });
+                
+                dataValues = dados.map(item => {
+                    const val = parseInt(item.total);
+                    return isNaN(val) ? 0 : val;
+                });
+            } else {
+                labels = ['Nenhum dado'];
+                dataValues = [1];
             }
+
+            console.log('Labels:', labels, 'Values:', dataValues);
+
+            // Destruir gráfico anterior se existir
+            if (pedidosChartInstance) {
+                pedidosChartInstance.destroy();
+            }
+
+            pedidosChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: [
+                            '#3b82f6',
+                            '#10b981',
+                            '#f59e0b',
+                            '#ef4444',
+                            '#8b5cf6',
+                            '#ec4899',
+                            '#6366f1'
+                        ],
+                        borderColor: 'white',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    size: 13,
+                                    family: 'Inter, sans-serif'
+                                },
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Gráfico de pedidos criado com sucesso');
+        } catch(error) {
+            console.error('Erro ao criar gráfico de pedidos:', error);
         }
     }
-});
+
+    function initializeMetricsChart() {
+        const ctx = document.getElementById('metricsChart');
+        if (!ctx) return;
+
+        try {
+            const data = loadDashboardData();
+            const totalPedidos = data.totalPedidos || 0;
+            const totalUsuarios = data.totalUsuarios || 0;
+            const totalEtapas = data.totalEtapas || 0;
+
+            // Destruir gráfico anterior se existir
+            if (metricsChartInstance) {
+                metricsChartInstance.destroy();
+            }
+
+            metricsChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Pedidos', 'Usuários', 'Etapas'],
+                    datasets: [{
+                        label: 'Total',
+                        data: [totalPedidos, totalUsuarios, totalEtapas],
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        barPercentage: 0.7,
+                        categoryPercentage: 0.8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'x',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch(error) {
+            console.error('Erro ao criar gráfico de métricas:', error);
+        }
+    }
 </script>
 {% endblock %}

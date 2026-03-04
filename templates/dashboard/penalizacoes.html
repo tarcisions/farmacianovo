@@ -1,30 +1,45 @@
-
 {% extends 'base.html' %}
 
 {% block title %}Penalizações{% endblock %}
 
-{% block sidebar %}
-{% include "includes/sidebar_gerente_admin.html" %}
+{% block extra_css %}
+<style>
+    .nav-tabs { margin-bottom: 0 !important; }
+    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
+    .tab-pane { display: none; }
+    .tab-pane.show.active { display: block; }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 fw-bold"><i class="bi bi-exclamation-triangle text-danger"></i> Gestão de Penalizações</h1>
-    <a href="{% url 'dashboard:criar_penalizacao' %}" class="btn btn-danger">
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-exclamation-triangle" style="color: #ef4444;"></i> Gestão de Penalizações
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Histórico de penalizações aplicadas aos funcionários</p>
+    </div>
+    <a href="{% url 'dashboard:criar_penalizacao' %}" class="btn btn-primary">
         <i class="bi bi-plus-circle"></i> Nova Penalização
     </a>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header">
-        <i class="bi bi-funnel"></i> Filtros
+<!-- FILTROS -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <h3 class="card-title">
+            <i class="bi bi-funnel" style="color: #4f46e5;"></i>
+            Filtros
+        </h3>
     </div>
-    <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label">Funcionário</label>
+
+    <div style="padding: 1.5rem;">
+        <form method="get" style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: flex-end;">
+            <div>
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Funcionário</label>
                 <select class="form-select" name="funcionario">
-                    <option value="">Todos</option>
+                    <option value="">Todos os funcionários</option>
                     {% for func in funcionarios %}
                     <option value="{{ func.id }}" {% if funcionario_selecionado|stringformat:"s" == func.id|stringformat:"s" %}selected{% endif %}>
                         {{ func.get_full_name|default:func.username }}
@@ -32,71 +47,80 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-6">
-                <label class="form-label">&nbsp;</label>
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-search"></i> Filtrar
-                    </button>
-                    <a href="{% url 'dashboard:penalizacoes' %}" class="btn btn-secondary">
-                        <i class="bi bi-x-circle"></i> Limpar
-                    </a>
-                </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'dashboard:penalizacoes' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Limpar
+                </a>
             </div>
         </form>
     </div>
 </div>
 
+<!-- PENALIZAÇÕES TABLE -->
 <div class="card">
-    <div class="card-header">
-        <i class="bi bi-list-ul"></i> Histórico de Penalizações ({{ penalizacoes.count }})
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Funcionário</th>
-                        <th>Motivo</th>
-                        <th>Pontos</th>
-                        <th>Aplicada Por</th>
-                        <th>Status</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for penalizacao in penalizacoes %}
-                    <tr>
-                        <td><small>{{ penalizacao.timestamp|date:"d/m/Y H:i" }}</small></td>
-                        <td><strong>{{ penalizacao.funcionario.get_full_name|default:penalizacao.funcionario.username }}</strong></td>
-                        <td>{{ penalizacao.motivo }}</td>
-                        <td><span class="badge bg-danger">-{{ penalizacao.pontos }} pts</span></td>
-                        <td>{{ penalizacao.aplicada_por.get_full_name|default:penalizacao.aplicada_por.username }}</td>
-                        <td>
-                            {% if penalizacao.revertida %}
-                            <span class="badge bg-success">Revertida</span>
-                            <br><small class="text-muted">Por {{ penalizacao.revertida_por.get_full_name }} em {{ penalizacao.revertida_em|date:"d/m/Y H:i" }}</small>
-                            {% else %}
-                            <span class="badge bg-warning">Ativa</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if not penalizacao.revertida %}
-                            <button class="btn btn-sm btn-outline-success" onclick="if(confirm('Tem certeza que deseja reverter esta penalização?')) window.location.href='{% url 'dashboard:reverter_penalizacao' penalizacao.id %}'">
-                                <i class="bi bi-arrow-counterclockwise"></i> Reverter
-                            </button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">Nenhuma penalização registrada</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 class="card-title">
+                <i class="bi bi-list-ul" style="color: #4f46e5;"></i>
+                Histórico de Penalizações
+            </h3>
+            <span style="color: #64748b; font-size: 0.9rem;">Total: {{ penalizacoes.count }}</span>
         </div>
     </div>
+
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width: 15%;">Data</th>
+                    <th style="width: 18%;">Funcionário</th>
+                    <th style="width: 25%;">Motivo</th>
+                    <th style="width: 12%;">Pontos</th>
+                    <th style="width: 15%;">Aplicada Por</th>
+                    <th style="width: 10%;">Status</th>
+                    <th style="width: 15%; text-align: center;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for penalizacao in penalizacoes %}
+                <tr>
+                    <td><small style="color: #64748b;">{{ penalizacao.timestamp|date:"d/m/Y H:i" }}</small></td>
+                    <td><strong>{{ penalizacao.funcionario.get_full_name|default:penalizacao.funcionario.username }}</strong></td>
+                    <td><small style="color: #475569;">{{ penalizacao.motivo }}</small></td>
+                    <td><span class="badge" style="background: #fee2e2; color: #dc2626;">-{{ penalizacao.pontos }} pts</span></td>
+                    <td><small>{{ penalizacao.aplicada_por.get_full_name|default:penalizacao.aplicada_por.username }}</small></td>
+                    <td>
+                        {% if penalizacao.revertida %}
+                            <span class="badge" style="background: #dcfce7; color: #16a34a;">Revertida</span>
+                            <br><small style="color: #64748b;">Por {{ penalizacao.revertida_por.get_full_name }} em {{ penalizacao.revertida_em|date:"d/m H:i" }}</small>
+                        {% else %}
+                            <span class="badge" style="background: #fef3c7; color: #d97706;">Ativa</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if not penalizacao.revertida %}
+                        <button class="btn btn-sm" style="padding: 0.4rem 0.8rem; border: 1px solid #e2e8f0; border-radius: 0.4rem; font-size: 0.85rem; color: #16a34a;" onclick="if(confirm('Reverter esta penalização?')) window.location.href='{% url 'dashboard:reverter_penalizacao' penalizacao.id %}'">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reverter
+                        </button>
+                        {% else %}
+                        <span style="color: #64748b; font-size: 0.85rem;">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 2rem; color: #64748b;">
+                        <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.3;"></i>
+                        <p style="margin-top: 1rem;">Nenhuma penalização registrada</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
+
 {% endblock %}

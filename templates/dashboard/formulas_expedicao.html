@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Expedição de Pedidos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .nav-tabs { margin-bottom: 0 !important; }
+    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
+    .tab-pane { display: none; }
+    .tab-pane.show.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-box2-heart" style="color: #4f46e5;"></i> Expedição de Pedidos
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">{{ descricao }}</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{% url 'dashboard:rotas_motoboy' %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-truck"></i> Rotas Motoboy
+        </a>
+        <a href="{% url 'dashboard:rotas_sedex' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-box-seam"></i> Rotas Sedex
+        </a>
+    </div>
+</div>
+
+<!-- INFORMATIVO -->
+<div class="card" style="margin-bottom: 2rem; background: #cffafe; border: 1px solid #a5f3fc; border-left: 4px solid #06b6d4;">
+    <div class="card-body" style="padding: 1rem;">
+        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+            <i class="bi bi-info-circle" style="color: #0369a1; font-size: 1.25rem; flex-shrink: 0;"></i>
+            <div>
+                <strong style="color: #0369a1; display: block;">Escolha a rota de expedição:</strong>
+                <p style="color: #0369a1; margin: 0.25rem 0 0 0; font-size: 0.95rem;">Selecione se cada pedido será enviado por <strong>Motoboy</strong> (entrega local) ou <strong>Sedex</strong> (correios). Todas as fórmulas do pedido serão expedidas juntas.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pedidos com suas Fórmulas -->
+{% for item in pedidos_com_count %}
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h3 class="card-title">
+                    <i class="bi bi-box2" style="color: #4f46e5;"></i> NRORC: {{ item.pedido.nrorc }}
+                </h3>
+                <small style="color: #64748b;">{{ item.formulas_prontas }} fórmula(s) pronta(s) • {{ item.pedido.observacoes|default:"Sem observações" }}</small>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <a href="{% url 'dashboard:pedido_escolher_rota' item.pedido.id 'motoboy' %}" 
+                   class="btn btn-success btn-sm"
+                   title="Enviar por Motoboy (entrega local rápida)">
+                    <i class="bi bi-truck"></i> Motoboy
+                </a>
+                <a href="{% url 'dashboard:pedido_escolher_rota' item.pedido.id 'sedex' %}" 
+                   class="btn btn-info btn-sm"
+                   title="Enviar por Sedex (correios)">
+                    <i class="bi bi-box-seam"></i> Sedex
+                </a>
+            </div>
+        </div>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead style="background: #f8fafc;">
+                <tr>
+                    <th style="width: 10%; padding: 0.75rem 1.5rem;">ID</th>
+                    <th style="padding: 0.75rem 1.5rem;">Descrição</th>
+                    <th style="width: 10%; padding: 0.75rem 1.5rem;">Forma</th>
+                    <th style="width: 15%; padding: 0.75rem 1.5rem;">Data e Hora</th>
+                    <th style="width: 15%; padding: 0.75rem 1.5rem;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for formula in item.pedido.formulas.all %}
+                {% if formula.status == 'pronto_para_expedicao' %}
+                <tr>
+                    <td style="padding: 0.75rem 1.5rem;"><small>#{{ formula.id }}</small></td>
+                    <td style="padding: 0.75rem 1.5rem;"><small>{{ formula.descricao }}</small></td>
+                    <td style="padding: 0.75rem 1.5rem;"><span class="badge bg-secondary">{{ formula.get_tipo_forma }}</span></td>
+                    <td style="padding: 0.75rem 1.5rem;">
+                        <small class="text-muted">
+                            {% if formula.datetime_atualizacao_api %}
+                                {{ formula.datetime_atualizacao_api|date:"d/m/Y H:i" }}
+                            {% else %}
+                                <span class="text-secondary">-</span>
+                            {% endif %}
+                        </small>
+                    </td>
+                    <td style="padding: 0.75rem 1.5rem;"><span class="badge bg-warning text-dark">{{ formula.get_status_display }}</span></td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% empty %}
+<div style="text-align: center; padding: 3rem 1rem;">
+    <i class="bi bi-inbox" style="font-size: 3rem; color: #cbd5e1; display: block; margin-bottom: 1rem;"></i>
+    <p style="color: #64748b; margin: 0;">Nenhum pedido pronto para expedição no momento</p>
+</div>
+{% endfor %}
+
+<!-- Paginação -->
+{% if page_obj.has_other_pages %}
+<nav aria-label="Page navigation" style="margin-top: 2rem; text-align: center;">
+    <div style="display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+        {% if page_obj.has_previous %}
+        <a href="?page=1" class="btn btn-outline-secondary btn-sm">Primeira</a>
+        <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline-secondary btn-sm">Anterior</a>
+        {% endif %}
+        
+        <span class="btn btn-disabled btn-sm" style="cursor: default; background: #f1f5f9; border: 1px solid #e2e8f0; color: #64748b;">
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </span>
+        
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline-secondary btn-sm">Próxima</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}" class="btn btn-outline-secondary btn-sm">Última</a>
+        {% endif %}
+    </div>
+</nav>
+{% endif %}
+
+<!-- Voltar -->
+<div style="margin-top: 2rem; text-align: center;">
+    <a href="{% url 'dashboard:home' %}" class="btn btn-secondary">
+        <i class="bi bi-house"></i> Voltar ao Dashboard
+    </a>
+</div>
+{% endblock %}
