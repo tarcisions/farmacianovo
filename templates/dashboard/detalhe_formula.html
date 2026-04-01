@@ -133,7 +133,6 @@
                     <strong>{{ hist_etapa.etapa.nome }}</strong>
                     <br>Funcionário: {{ hist_etapa.funcionario.get_full_name|default:hist_etapa.funcionario.username }}
                     <br>Tempo: {{ hist_etapa.tempo_gasto_formatado }}
-                    <br>Pontos: {{ hist_etapa.pontos_gerados }}
                 </div>
                 <hr class="my-1">
                 {% empty %}
@@ -165,7 +164,6 @@
                 <label class="form-check-label" for="check_{{ checklist.id }}">
                     <strong>{{ checklist.nome }}</strong>
                     {% if checklist.descricao %}<br><small class="text-muted">{{ checklist.descricao }}</small>{% endif %}
-                    <br><small>{{ checklist.pontos_do_check }} pontos</small>
                 </label>
             </div>
             {% endwith %}

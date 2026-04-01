@@ -19,6 +19,14 @@
         </a>
     </li>
 
+    <li>
+        <a class="sidebar-link {% if request.resolver_match.url_name == 'tarefas_em_andamento' %}active{% endif %}" 
+           href="{% url 'dashboard:tarefas_em_andamento' %}">
+            <i class="bi bi-hourglass-split"></i>
+            <span>Tarefas em Andamento</span>
+        </a>
+    </li>
+
 </ul>
 
 

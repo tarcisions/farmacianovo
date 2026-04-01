@@ -18,7 +18,7 @@
     <div>
         {% if is_gestor %}
         <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
-            <i class="bi bi-eye" style="color: #4f46e5;"></i> Fórmulas (Visualização - Gerente)
+            <i class="bi bi-person-check" style="color: #4f46e5;"></i> Fórmulas - Delegação
         </h1>
         {% else %}
         <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
@@ -43,8 +43,8 @@
         <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
             <i class="bi bi-info-circle" style="color: #0369a1; font-size: 1.25rem; flex-shrink: 0;"></i>
             <div>
-                <strong style="color: #0369a1; display: block;">Modo Auditoria</strong>
-                <p style="color: #0369a1; margin: 0.25rem 0 0 0; font-size: 0.95rem;">Você está visualizando todas as fórmulas. Não é possível assumir fórmulas nesta visão.</p>
+                <strong style="color: #0369a1; display: block;">Modo Gerencial</strong>
+                <p style="color: #0369a1; margin: 0.25rem 0 0 0; font-size: 0.95rem;">Você pode delegar fórmulas disponíveis para os funcionários. Use o botão "Delegar" para atribuir uma tarefa a um funcionário.</p>
             </div>
         </div>
     </div>
@@ -128,7 +128,7 @@
                         {% for formula in page_obj %}
                         <tr>
                             <td>
-                                <span class="badge bg-primary fs-6">{{ formula.pedido_mestre.nrorc }}</span>
+                                <span class="badge bg-primary fs-6" style="white-space: nowrap;">{{ formula.pedido_mestre.nrorc }}-{{ formula.serieo }}</span>
                             </td>
                             <td>
                                 <small class="text-dark">{{ formula.descricao }}</small>
@@ -156,13 +156,20 @@
                             </td>
                             <td style="text-align: center;">
                                 {% if is_funcionario %}
-                                <a href="{% url 'dashboard:assumir_formula' formula.id %}" class="btn btn-sm btn-success" title="Assumir esta fórmula">
-                                    <i class="bi bi-check-circle"></i>
-                                </a>
+                                <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                                    <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalAssumir" onclick="prepararModalAssumir({{ formula.id }}, '{{ formula.pedido_mestre.nrorc }}')" title="Assumir para você">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#modalDelegar" onclick="prepararModalDelegar({{ formula.id }}, '{{ formula.pedido_mestre.nrorc }}', '{{ formula.descricao|truncatewords:3 }}')" title="Delegar para outro">
+                                        <i class="bi bi-person-plus"></i>
+                                    </button>
+                                </div>
                                 {% else %}
-                                <a href="{% url 'dashboard:detalhe_formula' formula.id %}" class="btn btn-sm btn-info" title="Ver detalhes">
-                                    <i class="bi bi-eye"></i>
-                                </a>
+                                <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                                    <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalDelegar" onclick="prepararModalDelegar({{ formula.id }}, '{{ formula.pedido_mestre.nrorc }}', '{{ formula.descricao|truncatewords:3 }}')" title="Delegar para funcionário">
+                                        <i class="bi bi-arrow-left-right"></i> Delegar
+                                    </button>
+                                </div>
                                 {% endif %}
                             </td>
                         </tr>
@@ -238,4 +245,287 @@
     {% endif %}
 
 </div>
+
+<!-- MODAL DE CONFIRMAÇÃO - ASSUMIR -->
+<div class="modal fade" id="modalAssumir" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                <h5 class="modal-title">
+                    <i class="bi bi-question-circle" style="color: #f59e0b;"></i>
+                    Confirmar Assunção
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body" style="padding: 2rem;">
+                <div style="background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); padding: 1.5rem; border-radius: 0.75rem; margin-bottom: 1.5rem; color: white;">
+                    <small style="font-weight: 600; opacity: 0.9;">FÓRMULA</small>
+                    <div style="margin-top: 0.75rem;">
+                        <h6 style="margin: 0.5rem 0; font-size: 1rem;" id="modalAssumir_nrorc"></h6>
+                    </div>
+                </div>
+                
+                <div style="padding: 1rem; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0.375rem; margin-bottom: 1.5rem;">
+                    <p style="margin: 0; color: #92400e; font-size: 0.95rem;">
+                        <i class="bi bi-info-circle" style="margin-right: 0.5rem;"></i>
+                        <strong>Deseja realmente assumir esta tarefa?</strong>
+                        <br><br>
+                        Você será responsável pela execução e poderá pausá-la a qualquer momento.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 1rem; background: #f8fafc;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i> Cancelar
+                </button>
+                <a href="#" id="btnAssumir" class="btn btn-success">
+                    <i class="bi bi-check-circle"></i> Sim, Assumir
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE DELEGAÇÃO -->
+<div class="modal fade" id="modalDelegar" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-plus" style="color: #4f46e5;"></i>
+                    Delegar Tarefa para Funcionário
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <form id="formDelegar" method="POST" action="">
+                {% csrf_token %}
+                <input type="hidden" id="formulaId">
+                <div class="modal-body" style="padding: 2rem;">
+                    
+                    <!-- Informação da Fórmula -->
+                    <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 1.5rem; border-radius: 0.75rem; margin-bottom: 2rem; color: white;">
+                        <small style="font-weight: 600; opacity: 0.9;">FÓRMULA SELECIONADA</small>
+                        <div style="margin-top: 0.75rem;">
+                            <h6 style="margin: 0.5rem 0; font-size: 1.1rem;" id="formulaNrorc"></h6>
+                            <p style="margin: 0; opacity: 0.95; font-size: 0.9rem;" id="formulaDesc"></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Busca de Funcionário -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="font-weight: 700; margin-bottom: 0.75rem; display: block; color: #0f172a; font-size: 0.95rem;">
+                            <i class="bi bi-search"></i> Buscar Funcionário
+                        </label>
+                        <div style="position: relative;">
+                            <input 
+                                type="text" 
+                                id="buscaFuncionario" 
+                                class="form-control" 
+                                placeholder="Ex: Maria, João, carla..."
+                                autocomplete="off"
+                                style="padding: 0.75rem; font-size: 0.95rem; border: 2px solid #e2e8f0; transition: border-color 0.2s;"
+                            >
+                            <small style="color: #64748b; margin-top: 0.5rem; display: block;">
+                                💡 Digite pelo menos 2 caracteres. Busca por nome ou usuário.
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de Funcionários em Tabela -->
+                    <div id="containerTabela" style="display: none; margin-top: 1.5rem;">
+                        <small style="color: #64748b; font-weight: 600; display: block; margin-bottom: 0.75rem;">
+                            Resultados encontrados:
+                        </small>
+                        <div style="overflow-y: auto; max-height: 350px; border: 1px solid #e2e8f0; border-radius: 0.5rem;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead style="background: #f1f5f9; position: sticky; top: 0;">
+                                    <tr>
+                                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Nome Completo
+                                        </th>
+                                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Usuário
+                                        </th>
+                                        <th style="padding: 0.75rem; text-align: center; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Ação
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpoTabela">
+                                    <!-- Preenchido via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Mensagem de vazio -->
+                    <div id="mensagemVazio" style="display: none; text-align: center; padding: 2rem; color: #94a3b8;">
+                        <i class="bi bi-inbox" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
+                        <small>Nenhum funcionário encontrado</small>
+                    </div>
+                    
+                    <!-- Funcionário Selecionado -->
+                    <div id="funcionarioSelecionado" style="margin-top: 1.5rem; display: none;">
+                        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1.25rem; border-radius: 0.75rem; color: white;">
+                            <small style="font-weight: 600; opacity: 0.9;">✓ DELEGADO PARA:</small>
+                            <div style="margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                                <strong style="font-size: 1rem;" id="nomeFuncionarioSelecionado"></strong>
+                                <button type="button" class="btn btn-sm" onclick="limparFuncionario()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.4rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-weight: 600;">
+                                    <i class="bi bi-x"></i> Remover
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 1rem; background: #f8fafc;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="btnDelegar" disabled>
+                        <i class="bi bi-check-circle"></i> Delegar Tarefa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+<!-- SCRIPT DO MODAL -->
+<!-- SCRIPT DO MODAL -->
+{% block extra_js %}
+<script>
+    let funcionarioSelecionadoId = null;
+    let formulaIdAtual = null;
+    
+    // ===== MODAL ASSUMIR =====
+    function prepararModalAssumir(formulaId, nrorc) {
+        document.getElementById('modalAssumir_nrorc').textContent = '📦 NRORC: ' + nrorc;
+        document.getElementById('btnAssumir').href = `/dashboard/assumir-formula/${formulaId}/`;
+    }
+    
+    // ===== MODAL DELEGAR =====
+    function prepararModalDelegar(formulaId, nrorc, descricao) {
+        formulaIdAtual = formulaId;
+        document.getElementById('formulaId').value = formulaId;
+        document.getElementById('formDelegar').action = `/dashboard/delegar-formula/${formulaId}/`;
+        
+        document.getElementById('formulaNrorc').textContent = '📦 NRORC: ' + nrorc;
+        document.getElementById('formulaDesc').textContent = descricao.length > 50 ? descricao.substring(0, 50) + '...' : descricao;
+        funcionarioSelecionadoId = null;
+        document.getElementById('buscaFuncionario').value = '';
+        document.getElementById('containerTabela').style.display = 'none';
+        document.getElementById('mensagemVazio').style.display = 'none';
+        document.getElementById('funcionarioSelecionado').style.display = 'none';
+        document.getElementById('btnDelegar').disabled = true;
+    }
+    
+    document.getElementById('buscaFuncionario').addEventListener('input', function(e) {
+        const q = this.value.trim();
+        const corpoTabela = document.getElementById('corpoTabela');
+        const containerTabela = document.getElementById('containerTabela');
+        const mensagemVazio = document.getElementById('mensagemVazio');
+        
+        if (q.length < 2) {
+            containerTabela.style.display = 'none';
+            mensagemVazio.style.display = 'none';
+            corpoTabela.innerHTML = '';
+            return;
+        }
+        
+        // Buscar funcionários via AJAX
+        fetch(`/dashboard/api/buscar-funcionarios/?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                corpoTabela.innerHTML = '';
+                
+                if (data.funcionarios.length === 0) {
+                    containerTabela.style.display = 'none';
+                    mensagemVazio.style.display = 'block';
+                } else {
+                    mensagemVazio.style.display = 'none';
+                    containerTabela.style.display = 'block';
+                    
+                    data.funcionarios.forEach((func, index) => {
+                        const tr = document.createElement('tr');
+                        tr.style.borderBottom = '1px solid #e2e8f0';
+                        tr.style.transition = 'background 0.2s';
+                        
+                        tr.onmouseover = () => tr.style.background = '#f8fafc';
+                        tr.onmouseout = () => tr.style.background = 'transparent';
+                        
+                        tr.innerHTML = `
+                            <td style="padding: 0.75rem; color: #0f172a; font-weight: 500;">
+                                <i class="bi bi-person-circle" style="color: #4f46e5; margin-right: 0.5rem;"></i>
+                                ${func.nome}
+                            </td>
+                            <td style="padding: 0.75rem; color: #64748b; font-size: 0.9rem;">
+                                @${func.username}
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selecionarFuncionario(${func.id}, '${func.nome}')">
+                                    <i class="bi bi-check-circle"></i> Selecionar
+                                </button>
+                            </td>
+                        `;
+                        
+                        corpoTabela.appendChild(tr);
+                    });
+                }
+                
+                containerTabela.style.display = 'block';
+            })
+            .catch(err => {
+                console.error('Erro ao buscar funcionários:', err);
+                containerTabela.style.display = 'none';
+                mensagemVazio.style.display = 'block';
+                mensagemVazio.innerHTML = '<i class="bi bi-exclamation-triangle" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i><small>Erro ao buscar funcionários</small>';
+            });
+    });
+    
+    function selecionarFuncionario(id, nome) {
+        funcionarioSelecionadoId = id;
+        document.getElementById('buscaFuncionario').value = nome;
+        document.getElementById('containerTabela').style.display = 'none';
+        document.getElementById('mensagemVazio').style.display = 'none';
+        document.getElementById('funcionarioSelecionado').style.display = 'block';
+        document.getElementById('nomeFuncionarioSelecionado').textContent = '👤 ' + nome;
+        document.getElementById('btnDelegar').disabled = false;
+        
+        // Adicionar input hidden para enviar via POST
+        let input = document.getElementById('funcionarioDelegadoId');
+        if (input) input.remove();
+        input = document.createElement('input');
+        input.type = 'hidden';
+        input.id = 'funcionarioDelegadoId';
+        input.name = 'funcionario_id';
+        input.value = id;
+        document.getElementById('formDelegar').appendChild(input);
+    }
+    
+    function limparFuncionario() {
+        funcionarioSelecionadoId = null;
+        document.getElementById('buscaFuncionario').value = '';
+        document.getElementById('containerTabela').style.display = 'none';
+        document.getElementById('mensagemVazio').style.display = 'none';
+        document.getElementById('funcionarioSelecionado').style.display = 'none';
+        document.getElementById('btnDelegar').disabled = true;
+        
+        let input = document.getElementById('funcionarioDelegadoId');
+        if (input) input.remove();
+    }
+    
+    document.getElementById('formDelegar').addEventListener('submit', function(e) {
+        if (!funcionarioSelecionadoId) {
+            e.preventDefault();
+            alert('Selecione um funcionário!');
+            return false;
+        }
+    });
+</script>
 {% endblock %}

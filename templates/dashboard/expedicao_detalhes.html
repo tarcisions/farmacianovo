@@ -48,128 +48,118 @@
                 <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Total de Pedidos</small>
                 <span class="badge" style="background: #dbeafe; color: #0369a1; display: inline-block;">{{ total_pedidos }}</span>
             </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
+</div>
 
-    <!-- KPIs da Expedição -->
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card text-center">
-                <div class="card-body">
-                    <p class="text-muted mb-1">Total de Pedidos</p>
-                    <h3 class="text-info">{{ total_pedidos }}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card text-center">
-                <div class="card-body">
-                    <p class="text-muted mb-1">Total de Fórmulas</p>
-                    <h3 class="text-success">{{ total_formulas }}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card text-center">
-                <div class="card-body">
-                    <p class="text-muted mb-1">Rota</p>
-                    <h3 class="text-warning">{{ rota }}</h3>
-                </div>
-            </div>
+<!-- KPI: MOSTRA A ROTA EM DESTAQUE -->
+<div style="margin-bottom: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+    <div class="card">
+        <div class="card-body text-center">
+            <h2 style="color: #4f46e5; margin: 0; font-size: 1.5rem;">
+                <i class="bi {{ rota_icon }}"></i> {{ rota }}
+            </h2>
+            <small style="color: #64748b; display: block; margin-top: 0.5rem;">Tipo de Rota</small>
         </div>
     </div>
-
-    <!-- Lista de Pedidos na Expedição -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-list-ul"></i> Pedidos Nesta Expedição
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% if pedidos_info %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 40px;"></th>
-                                    <th>NRORC</th>
-                                    <th>Fórmulas</th>
-                                    <th>Observações</th>
-                                    <th>Data Criação</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for info in pedidos_info %}
-                                <tr>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-pedido-{{ info.pedido.id }}" aria-expanded="false">
-                                            <i class="bi bi-chevron-down"></i>
-                                        </button>
-                                    </td>
-                                    <td><strong>#{{ info.pedido.nrorc }}</strong></td>
-                                    <td><span class="badge bg-info">{{ info.total_formulas }}</span></td>
-                                    <td><small>{{ info.pedido.observacoes|truncatewords:10|default:"-" }}</small></td>
-                                    <td><small>{{ info.pedido.criado_em|date:"d/m/Y H:i" }}</small></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="5" class="p-0">
-                                        <div class="collapse" id="collapse-pedido-{{ info.pedido.id }}">
-                                            <div class="card card-body bg-light">
-                                                <strong class="mb-2 d-block">Fórmulas do Pedido #{{ info.pedido.nrorc }}:</strong>
-                                                <table class="table table-sm">
-                                                    <thead class="table-light">
-                                                        <tr>
-                                                            <th>ID</th>
-                                                            <th>Descrição</th>
-                                                            <th>Forma</th>
-                                                            <th>Volume</th>
-                                                            <th>Qtd</th>
-                                                            <th>Status</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {% for formula in info.formulas %}
-                                                        <tr>
-                                                            <td><small>#{{ formula.id }}</small></td>
-                                                            <td><small>{{ formula.descricao }}</small></td>
-                                                            <td><small>{{ formula.get_tipo_forma }}</small></td>
-                                                            <td><small>{{ formula.get_volume_display }}</small></td>
-                                                            <td><small>{{ formula.quantidade }}</small></td>
-                                                            <td>
-                                                                {% if formula.status == 'expedido' %}
-                                                                    <span class="badge bg-success">Expedido</span>
-                                                                {% else %}
-                                                                    <span class="badge bg-warning">{{ formula.get_status_display }}</span>
-                                                                {% endif %}
-                                                            </td>
-                                                        </tr>
-                                                        {% endfor %}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-circle"></i> Nenhum pedido nesta expedição.
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
+    <div class="card">
+        <div class="card-body text-center">
+            <h2 style="color: #10b981; margin: 0;">{{ total_pedidos }}</h2>
+            <small style="color: #64748b; display: block; margin-top: 0.5rem;">Pedidos</small>
         </div>
     </div>
+    <div class="card">
+        <div class="card-body text-center">
+            <h2 style="color: #0369a1; margin: 0;">{{ total_formulas }}</h2>
+            <small style="color: #64748b; display: block; margin-top: 0.5rem;">Fórmulas</small>
+        </div>
+    </div>
+</div>
 
+<!-- Lista de Pedidos na Expedição -->
+<div style="margin-bottom: 2rem;">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-list-ul"></i> Pedidos Nesta Expedição
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if pedidos_info %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 40px;"></th>
+                            <th>NRORC</th>
+                            <th>Fórmulas</th>
+                            <th>Observações</th>
+                            <th>Data Criação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for info in pedidos_info %}
+                        <tr>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-pedido-{{ info.pedido.id }}" aria-expanded="false">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                            </td>
+                            <td><strong>#{{ info.pedido.nrorc }}</strong></td>
+                            <td><span class="badge bg-info">{{ info.total_formulas }}</span></td>
+                            <td><small>{{ info.pedido.observacoes|truncatewords:10|default:"-" }}</small></td>
+                            <td><small>{{ info.pedido.criado_em|date:"d/m/Y H:i" }}</small></td>
+                        </tr>
+                        <tr>
+                            <td colspan="5" class="p-0">
+                                <div class="collapse" id="collapse-pedido-{{ info.pedido.id }}">
+                                    <div class="card card-body bg-light">
+                                        <strong class="mb-2 d-block">Fórmulas do Pedido #{{ info.pedido.nrorc }}:</strong>
+                                        <table class="table table-sm">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Descrição</th>
+                                                    <th>Forma</th>
+                                                    <th>Volume</th>
+                                                    <th>Qtd</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for formula in info.formulas %}
+                                                <tr>
+                                                    <td><small>#{{ formula.id }}</small></td>
+                                                    <td><small>{{ formula.descricao }}</small></td>
+                                                    <td><small>{{ formula.get_tipo_forma }}</small></td>
+                                                    <td><small>{{ formula.get_volume_display }}</small></td>
+                                                    <td><small>{{ formula.quantidade }}</small></td>
+                                                    <td>
+                                                        {% if formula.status == 'expedido' %}
+                                                            <span class="badge bg-success">Expedido</span>
+                                                        {% else %}
+                                                            <span class="badge bg-warning">{{ formula.get_status_display }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-circle"></i> Nenhum pedido nesta expedição.
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 {% endblock %}

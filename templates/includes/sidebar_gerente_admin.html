@@ -36,6 +36,22 @@
     {% endif %}
 </ul>
 
+<div class="sidebar-title">Tarefas</div>
+<ul style="list-style: none; padding: 0; margin: 0;">
+    <li>
+        <a class="sidebar-link {% if request.resolver_match.url_name == 'formulas_disponiveis' %}active{% endif %}" href="{% url 'dashboard:formulas_disponiveis' %}">
+            <i class="bi bi-inbox"></i>
+            <span>Fórmulas Disponíveis</span>
+        </a>
+    </li>
+    <li>
+        <a class="sidebar-link {% if request.resolver_match.url_name == 'tarefas_em_andamento' %}active{% endif %}" href="{% url 'dashboard:tarefas_em_andamento' %}">
+            <i class="bi bi-play-circle"></i>
+            <span>Tarefas em Andamento</span>
+        </a>
+    </li>
+</ul>
+
 <div class="sidebar-title">Qualidade</div>
 <ul style="list-style: none; padding: 0; margin: 0;">
     <li>

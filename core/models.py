@@ -343,6 +343,7 @@ class ConfiguracaoExpedicao(models.Model):
     TIPO_EXPEDICAO = [
         ('motoboy', 'Motoboy'),
         ('sedex', 'Sedex'),
+        ('retirada', 'Retirada'),
     ]
     
     TIPO_PONTUACAO_SEDEX = [
@@ -371,6 +372,7 @@ class RegistroExpedicao(models.Model):
     ROTA_CHOICES = [
         ('motoboy', 'Motoboy'),
         ('sedex', 'Sedex'),
+        ('retirada', 'Retirada'),
     ]
     
     funcionario = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -1052,3 +1054,23 @@ class ChecklistExecucaoFormula(models.Model):
     
     def __str__(self):
         return f"{self.checklist.nome} - {'OK' if self.marcado else 'PENDENTE'}"
+
+
+class DelegacaoTarefa(models.Model):
+    """Registra quem delegou uma tarefa para quem"""
+    formula = models.ForeignKey(FormulaItem, on_delete=models.CASCADE, related_name='delegacoes')
+    delegado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='delegacoes_feitas', help_text="Funcionário que delegou a tarefa")
+    delegado_para = models.ForeignKey(User, on_delete=models.CASCADE, related_name='delegacoes_recebidas', help_text="Funcionário que recebeu a tarefa")
+    etapa = models.ForeignKey(Etapa, on_delete=models.SET_NULL, null=True, blank=True)
+    data_delegacao = models.DateTimeField(auto_now_add=True)
+    ativa = models.BooleanField(default=True, help_text="Se a delegação está ativa")
+    data_conclusao = models.DateTimeField(null=True, blank=True, help_text="Quando a tarefa foi concluída")
+    
+    class Meta:
+        verbose_name = 'Delegação de Tarefa'
+        verbose_name_plural = 'Delegações de Tarefas'
+        ordering = ['-data_delegacao']
+    
+    def __str__(self):
+        delegado_por_nome = self.delegado_por.get_full_name() if self.delegado_por else "Sistema"
+        return f"{self.formula.pedido_mestre.nrorc} - Delegado por {delegado_por_nome} para {self.delegado_para.get_full_name()}"

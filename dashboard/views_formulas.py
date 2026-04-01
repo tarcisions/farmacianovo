@@ -5,6 +5,8 @@ Criado para o sistema de múltiplas fórmulas por pedido
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.db.models import Q, Sum
 from django.utils import timezone
@@ -16,6 +18,29 @@ from core.models import (
     FormulaItem, PedidoMestre, Etapa, HistoricoEtapaFormula,
     PontuacaoFuncionario, LogAuditoria, Checklist, ChecklistExecucaoFormula
 )
+
+
+# ===== FUNÇÃO HELPER PARA GARANTIR APENAS 1 ATIVA =====
+def _garantir_uma_so_ativa(user):
+    """
+    Garante que o funcionário tem NO MÁXIMO 1 tarefa ativa.
+    Se houver mais de 1, pausa todas menos a primeira.
+    """
+    ativas = FormulaItem.objects.filter(
+        funcionario_na_etapa=user,
+        eh_tarefa_ativa=True,
+        status__in=['em_triagem', 'em_producao', 'em_qualidade']
+    ).order_by('-criado_em')  # Mantém a mais recente como ativa
+    
+    if ativas.count() > 1:
+        # Pausa todos menos o primeiro
+        para_pausar = ativas[1:]
+        for formula in para_pausar:
+            formula.eh_tarefa_ativa = False
+            formula.save()
+        return len(para_pausar)  # Retorna quantas foram pausadas
+    
+    return 0
 
 
 @login_required
@@ -34,15 +59,18 @@ def formulas_disponiveis(request):
     pedido_mestre_id = request.GET.get('pedido_mestre', '').strip()
     
     # Buscar fórmulas
-    if is_funcionario:
+    if is_funcionario and not is_gestor:
         # Funcionários veem apenas fórmulas disponíveis (sem funcionário)
         formulas = FormulaItem.objects.filter(
             funcionario_na_etapa__isnull=True,
             status__in=['em_triagem', 'em_producao', 'em_qualidade']
-        ).select_related('pedido_mestre', 'etapa_atual').order_by('-datetime_atualizacao_api', '-criado_em')
+        ).select_related('pedido_mestre', 'etapa_atual').order_by('-pedido_mestre__nrorc', 'serieo')
     else:
-        # Gerentes/Admins veem todas as fórmulas (auditoria)
-        formulas = FormulaItem.objects.all().select_related('pedido_mestre', 'etapa_atual').order_by('-datetime_atualizacao_api', '-criado_em')
+        # Gerentes/Admins veem APENAS fórmulas disponíveis (sem funcionário atribuído) para delegar
+        formulas = FormulaItem.objects.filter(
+            funcionario_na_etapa__isnull=True,
+            status__in=['em_triagem', 'em_producao', 'em_qualidade']
+        ).select_related('pedido_mestre', 'etapa_atual').order_by('-pedido_mestre__nrorc', 'serieo')
     
     if nrorc:
         formulas = formulas.filter(pedido_mestre__nrorc__icontains=nrorc)
@@ -62,6 +90,7 @@ def formulas_disponiveis(request):
     
     context = {
         'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages,
         'etapas': etapas,
         'filtro_nrorc': nrorc,
         'filtro_descricao': descricao,
@@ -115,9 +144,12 @@ def minhas_formulas(request):
 
 @login_required
 def pausar_tarefa_formula(request, formula_id):
-    """Pausa a tarefa ativa e ativa a primeira pendente se existir"""
+    """Pausa a tarefa ativa - sem ativar outra automaticamente"""
     if not request.user.groups.filter(name='Funcionário').exists():
         return redirect('dashboard:home')
+    
+    # PRIMEIRO: Garantir apenas 1 ativa (corrigir eventuais conflitos)
+    _garantir_uma_so_ativa(request.user)
     
     formula = get_object_or_404(FormulaItem, id=formula_id, funcionario_na_etapa=request.user)
     
@@ -125,24 +157,11 @@ def pausar_tarefa_formula(request, formula_id):
         messages.error(request, 'Esta tarefa não está ativa para ser pausada.')
         return redirect('dashboard:minhas_formulas')
     
-    # Pausa a tarefa ativa
+    # Pausa a tarefa ativa - SEM ativar outra
     formula.eh_tarefa_ativa = False
     formula.save()
     
-    # Buscar primeira tarefa pendente NESTA MESMA ETAPA para ativar
-    proxima_pendente = FormulaItem.objects.filter(
-        funcionario_na_etapa=request.user,
-        etapa_atual=formula.etapa_atual,
-        eh_tarefa_ativa=False,
-        status__in=['em_triagem', 'em_producao', 'em_qualidade']
-    ).first()
-    
-    if proxima_pendente:
-        proxima_pendente.eh_tarefa_ativa = True
-        proxima_pendente.save()
-        messages.info(request, f'✓ Tarefa pausada! Tarefa NRORC {proxima_pendente.pedido_mestre.nrorc} agora está ATIVA.')
-    else:
-        messages.success(request, f'✓ Tarefa NRORC {formula.pedido_mestre.nrorc} pausada com sucesso!')
+    messages.success(request, f'✓ Tarefa NRORC {formula.pedido_mestre.nrorc} pausada com sucesso!')
     
     # Log
     LogAuditoria.objects.create(
@@ -151,6 +170,9 @@ def pausar_tarefa_formula(request, formula_id):
         descricao=f'Pausou tarefa NRORC {formula.pedido_mestre.nrorc} na etapa {formula.etapa_atual.nome}',
         ip_address=request.META.get('REMOTE_ADDR')
     )
+    
+    # DEPOIS: Garantir apenas 1 ativa (verificação final)
+    _garantir_uma_so_ativa(request.user)
     
     return redirect('dashboard:minhas_formulas')
 
@@ -161,24 +183,27 @@ def ativar_tarefa_formula(request, formula_id):
     if not request.user.groups.filter(name='Funcionário').exists():
         return redirect('dashboard:home')
     
+    # PRIMEIRO: Garantir apenas 1 ativa (corrigir eventuais conflitos)
+    _garantir_uma_so_ativa(request.user)
+    
     formula = get_object_or_404(FormulaItem, id=formula_id, funcionario_na_etapa=request.user)
     
     if formula.eh_tarefa_ativa:
         messages.error(request, 'Esta tarefa já está ativa.')
         return redirect('dashboard:minhas_formulas')
     
-    # Verificar se já tem uma tarefa ATIVA NESTA ETAPA
-    ativa_etapa = FormulaItem.objects.filter(
+    # Pausar QUALQUER ATIVA que exista (pode estar em qualquer etapa)
+    ativa_geral = FormulaItem.objects.filter(
         funcionario_na_etapa=request.user,
-        etapa_atual=formula.etapa_atual,
-        eh_tarefa_ativa=True
+        eh_tarefa_ativa=True,
+        status__in=['em_triagem', 'em_producao', 'em_qualidade']
     ).first()
     
-    if ativa_etapa:
+    if ativa_geral:
         # Pausa a ativa
-        ativa_etapa.eh_tarefa_ativa = False
-        ativa_etapa.save()
-        mensagem_pausa = f' (NRORC {ativa_etapa.pedido_mestre.nrorc} foi pausada)'
+        ativa_geral.eh_tarefa_ativa = False
+        ativa_geral.save()
+        mensagem_pausa = f' (NRORC {ativa_geral.pedido_mestre.nrorc} foi pausada)'
     else:
         mensagem_pausa = ''
     
@@ -196,6 +221,9 @@ def ativar_tarefa_formula(request, formula_id):
         ip_address=request.META.get('REMOTE_ADDR')
     )
     
+    # DEPOIS: Garantir apenas 1 ativa (verificação final)
+    _garantir_uma_so_ativa(request.user)
+    
     return redirect('dashboard:minhas_formulas')
 
 
@@ -204,6 +232,9 @@ def assumir_formula(request, formula_id):
     """Assume uma fórmula para trabalhar"""
     if not request.user.groups.filter(name='Funcionário').exists():
         return redirect('dashboard:home')
+    
+    # PRIMEIRO: Garantir apenas 1 ativa (corrigir eventuais conflitos)
+    _garantir_uma_so_ativa(request.user)
     
     formula = get_object_or_404(FormulaItem, id=formula_id)
     
@@ -228,15 +259,19 @@ def assumir_formula(request, formula_id):
             messages.error(request, 'Você atingiu o máximo de 5 tarefas. Conclua ou pause uma tarefa antes de assumir outra.')
             return redirect('dashboard:formulas_disponiveis')
         
-        # Verificar se já tem 1 tarefa ativa nesta etapa
-        tem_ativa_etapa = FormulaItem.objects.filter(
+        # PAUSAR TODAS as ativas do funcionário
+        tarefas_ativas = FormulaItem.objects.filter(
             funcionario_na_etapa=request.user,
-            etapa_atual=formula.etapa_atual,
+            status__in=['em_triagem', 'em_producao', 'em_qualidade'],
             eh_tarefa_ativa=True
-        ).exists()
+        )
         
-        # Se não tem ativa nesta etapa, esta será ativa. Senão será pendente.
-        nova_tarefa_ativa = not tem_ativa_etapa
+        if tarefas_ativas.exists():
+            # Pausar todas as ativas
+            tarefas_ativas.update(eh_tarefa_ativa=False)
+        
+        # Esta será ativa (única tarefa ativa)
+        nova_tarefa_ativa = True
     else:
         nova_tarefa_ativa = False  # Expedição não usa sistema de ativo/pendente
     
@@ -255,9 +290,12 @@ def assumir_formula(request, formula_id):
     )
     
     if nova_tarefa_ativa:
-        messages.success(request, f'✓ Fórmula NRORC {formula.pedido_mestre.nrorc} assumida como ATIVA!')
+        messages.success(request, f'✓ Fórmula NRORC {formula.pedido_mestre.nrorc} assumida como ATIVA! Outras tarefas foram pausadas.')
     else:
         messages.info(request, f'✓ Fórmula NRORC {formula.pedido_mestre.nrorc} adicionada como PENDENTE. Pause sua tarefa ativa para começar.')
+    
+    # DEPOIS: Garantir apenas 1 ativa (verificação final)
+    _garantir_uma_so_ativa(request.user)
     
     # Redirecionar para tela de trabalho da fórmula
     return redirect('dashboard:detalhe_formula', formula_id=formula.id)
@@ -612,7 +650,7 @@ def formulas_expedicao_funcionario(request):
 @login_required
 def pedido_escolher_rota(request, pedido_id, rota_tipo):
     """Marca pedido para uma rota (ainda não finalizado - vai ficar em fila de espera)"""
-    if rota_tipo not in ['motoboy', 'sedex']:
+    if rota_tipo not in ['motoboy', 'sedex', 'retirada']:
         messages.error(request, 'Rota inválida.')
         return redirect('dashboard:rotas_unificada')
     
@@ -769,7 +807,7 @@ def rotas_sedex(request):
 @login_required
 def finalizar_rota(request, rota_tipo):
     """Finaliza apenas os pedidos SELECIONADOS de uma rota"""
-    if rota_tipo not in ['motoboy', 'sedex']:
+    if rota_tipo not in ['motoboy', 'sedex', 'retirada']:
         messages.error(request, 'Tipo de rota inválido.')
         return redirect('dashboard:home')
     
@@ -777,11 +815,27 @@ def finalizar_rota(request, rota_tipo):
         messages.error(request, 'Método inválido.')
         return redirect('dashboard:home')
     
+    # Buscar funcionário responsável (delegado ou mesmo usuário)
+    funcionario_responsavel_id = request.POST.get('funcionario_responsavel_id')
+    
+    if funcionario_responsavel_id:
+        try:
+            funcionario_responsavel = User.objects.get(
+                id=funcionario_responsavel_id,
+                groups__name='Funcionário'
+            )
+        except User.DoesNotExist:
+            messages.error(request, 'Funcionário responsável inválido.')
+            return redirect('dashboard:rotas_unificada')
+    else:
+        # Se não foi delegado, assume ser o próprio usuário
+        funcionario_responsavel = request.user
+    
     # Buscar pedidos selecionados
     pedidos_ids = request.POST.getlist('pedidos_selecionados')
     if not pedidos_ids:
         messages.error(request, 'Selecione pelo menos um pedido para enviar.')
-        return redirect(f'dashboard:rotas_{rota_tipo}')
+        return redirect('dashboard:rotas_unificada')
     
     # Marcar como expedido apenas os selecionados
     pedidos = PedidoMestre.objects.filter(id__in=pedidos_ids)
@@ -805,14 +859,14 @@ def finalizar_rota(request, rota_tipo):
         LogAuditoria.objects.create(
             usuario=request.user,
             acao='finalizar_rota',
-            descricao=f'Enviou pedido NRORC {pedido.nrorc} ({formulas.count()} fórmulas) via {rota_tipo.upper()}',
+            descricao=f'Enviou pedido NRORC {pedido.nrorc} ({formulas.count()} fórmulas) via {rota_tipo.upper()} - Responsável: {funcionario_responsavel.get_full_name()}',
             ip_address=request.META.get('REMOTE_ADDR')
         )
     
-    # Criar registro de expedição (batch)
+    # Criar registro de expedição (batch) - com o funcionário RESPONSÁVEL
     from core.models import RegistroExpedicao
     registro_expedicao = RegistroExpedicao.objects.create(
-        funcionario=request.user,
+        funcionario=funcionario_responsavel,  # QUEM RECEBE CRÉDITO
         rota_tipo=rota_tipo,
         total_pedidos=total_pedidos,
         total_formulas=total_formulas,
@@ -833,6 +887,8 @@ def rotas_unificada(request):
     """Dashboard unificado de rotas: disponíveis, em fila, e histórico de expedições"""
     if not request.user.groups.filter(name__in=['Funcionário', 'Gerente', 'Superadmin']).exists():
         return redirect('dashboard:home')
+    
+    from django.core.paginator import Paginator
     
     is_funcionario = request.user.groups.filter(name='Funcionário').exists()
     
@@ -857,23 +913,19 @@ def rotas_unificada(request):
             formulas__historico_etapas__funcionario=request.user
         ).distinct().prefetch_related('formulas').order_by('-criado_em')
         
-        # Histórico: Registros de expedição criados por este funcionário
-        from core.models import RegistroExpedicao
-        registros_expedicao = RegistroExpedicao.objects.filter(
-            funcionario=request.user,
-            pedidos_mestre__isnull=False
-        ).distinct().prefetch_related('pedidos_mestre__formulas').order_by('-data')[:20]
+        # Fila Retirada que este funcionário trabalhou
+        fila_retirada = PedidoMestre.objects.filter(
+            status='em_rota_retirada',
+            formulas__historico_etapas__funcionario=request.user
+        ).distinct().prefetch_related('formulas').order_by('-criado_em')
         
-        # Fallback: se não houver registros de expedição, mostrar pedidos expedidos (compatibilidade)
-        if not registros_expedicao.exists():
-            expedidos = PedidoMestre.objects.filter(
-                status='expedido',
-                formulas__historico_etapas__funcionario=request.user
-            ).distinct().prefetch_related('formulas').order_by('-criado_em')[:10]
-            total_expedidos = expedidos.count()
-        else:
-            expedidos = registros_expedicao
-            total_expedidos = expedidos.count()
+        # Histórico: TODOS os registros de expedição (para todos verem) com paginação
+        from core.models import RegistroExpedicao
+        expedidos_qs = RegistroExpedicao.objects.filter(
+            pedidos_mestre__isnull=False
+        ).distinct().prefetch_related('pedidos_mestre__formulas', 'funcionario').order_by('-data')
+        
+        total_expedidos = expedidos_qs.count()
     else:
         # Gerentes/Admins veem tudo
         pedidos_prontos = PedidoMestre.objects.filter(
@@ -889,22 +941,37 @@ def rotas_unificada(request):
             status='em_rota_sedex'
         ).prefetch_related('formulas').order_by('-criado_em')
         
-        # Histórico: Registros de expedição (novo modelo unificado)
-        from core.models import RegistroExpedicao
-        expedidos = RegistroExpedicao.objects.filter(
-            pedidos_mestre__isnull=False
-        ).distinct().prefetch_related('pedidos_mestre__formulas', 'funcionario').order_by('-data')[:20]
+        fila_retirada = PedidoMestre.objects.filter(
+            status='em_rota_retirada'
+        ).prefetch_related('formulas').order_by('-criado_em')
         
-        total_expedidos = RegistroExpedicao.objects.filter(pedidos_mestre__isnull=False).count()
+        # Histórico: Registros de expedição (novo modelo unificado) com paginação
+        from core.models import RegistroExpedicao
+        expedidos_qs = RegistroExpedicao.objects.filter(
+            pedidos_mestre__isnull=False
+        ).distinct().prefetch_related('pedidos_mestre__formulas', 'funcionario').order_by('-data')
+        
+        total_expedidos = expedidos_qs.count()
+    
+    # Paginação do histórico
+    paginator = Paginator(expedidos_qs, 25)  # 25 items per page
+    page_num = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page_num)
+    except:
+        page_obj = paginator.page(1)
     
     context = {
         'pedidos_prontos': pedidos_prontos,
         'fila_motoboy': fila_motoboy,
         'fila_sedex': fila_sedex,
-        'expedidos': expedidos,
+        'fila_retirada': fila_retirada,
+        'expedidos': page_obj.object_list,
+        'page_obj': page_obj,
         'total_prontos': pedidos_prontos.count(),
         'total_motoboy': fila_motoboy.count(),
         'total_sedex': fila_sedex.count(),
+        'total_retirada': fila_retirada.count(),
         'total_expedidos': total_expedidos,
     }
     
@@ -952,11 +1019,7 @@ def expedicao_detalhes(request, expedicao_id):
     
     expedis = get_object_or_404(RegistroExpedicao, id=expedicao_id, pedidos_mestre__isnull=False)
     
-    # Verificar permissão: funcionário vê apenas suas expedições
-    if request.user.groups.filter(name='Funcionário').exists():
-        if expedis.funcionario != request.user:
-            messages.error(request, 'Você não tem permissão para ver esta expedição.')
-            return redirect('dashboard:rotas_unificada')
+    # Todos podem ver todas as expedições
     
     # Buscar todos os pedidos da expedição
     pedidos = expedis.pedidos_mestre.all().prefetch_related('formulas')
@@ -978,6 +1041,9 @@ def expedicao_detalhes(request, expedicao_id):
     elif expedis.rota_tipo == 'sedex':
         rota = 'Sedex'
         rota_icon = 'bi-box-seam'
+    elif expedis.rota_tipo == 'retirada':
+        rota = 'Retirada'
+        rota_icon = 'bi-bag-check'
     else:
         rota = 'Não definida'
         rota_icon = 'bi-truck'
@@ -992,3 +1058,238 @@ def expedicao_detalhes(request, expedicao_id):
     }
     
     return render(request, 'dashboard/expedicao_detalhes.html', context)
+
+
+@login_required
+def tarefas_em_andamento(request):
+    """
+    Nova página que exibe TODAS AS TAREFAS ASSUMIDAS com:
+    - NRORC
+    - Descrição
+    - Etapa
+    - Funcionário que está trabalhando
+    - Status (Ativo/Pendente)
+    - Quem delegou (se aplicável)
+    
+    Funcionários veem TUDO, mas podem filtrar.
+    Gerentes veem TUDO sem restrição.
+    """
+    # Apenas funcionários e gerentes
+    is_funcionario = request.user.groups.filter(name='Funcionário').exists()
+    is_gestor = request.user.groups.filter(name__in=['Gerente', 'Superadmin']).exists() or request.user.is_superuser
+    
+    if not (is_funcionario or is_gestor):
+        return redirect('dashboard:home')
+    
+    # Buscar TODAS as fórmulas assumidas (sem filtro de propriedade)
+    formulas_assumidas = FormulaItem.objects.filter(
+        funcionario_na_etapa__isnull=False,  # Tem funcionário responsável
+        status__in=['em_triagem', 'em_producao', 'em_qualidade']
+    ).select_related('pedido_mestre', 'etapa_atual', 'funcionario_na_etapa').prefetch_related('delegacoes').order_by('-eh_tarefa_ativa', '-datetime_atualizacao_api')
+    
+    # Filtros
+    etapa_id = request.GET.get('etapa', '').strip()
+    funcionario_id = request.GET.get('funcionario', '').strip()
+    status_filtro = request.GET.get('status', '').strip()  # 'ativo' ou 'pendente'
+    nrorc = request.GET.get('nrorc', '').strip()
+    
+    # Aplicar filtros apenas se foram selecionados
+    if etapa_id:
+        formulas_assumidas = formulas_assumidas.filter(etapa_atual_id=etapa_id)
+    
+    if funcionario_id:
+        formulas_assumidas = formulas_assumidas.filter(funcionario_na_etapa_id=funcionario_id)
+    
+    if status_filtro:
+        if status_filtro == 'ativo':
+            formulas_assumidas = formulas_assumidas.filter(eh_tarefa_ativa=True)
+        elif status_filtro == 'pendente':
+            formulas_assumidas = formulas_assumidas.filter(eh_tarefa_ativa=False)
+    
+    if nrorc:
+        formulas_assumidas = formulas_assumidas.filter(pedido_mestre__nrorc__icontains=nrorc)
+    
+    # Paginação
+    paginator = Paginator(formulas_assumidas, 20)
+    page_number = request.GET.get('page', '1')
+    page_obj = paginator.get_page(page_number)
+    
+    # Para cada fórmula, buscar a delegação (se houver)
+    formulas_com_delegacao = []
+    for formula in page_obj:
+        # Buscar delegação mais recente/ativa
+        delegacao = None
+        if formula.delegacoes.exists():
+            delegacao = formula.delegacoes.filter(ativa=True).order_by('-data_delegacao').first()
+        
+        formulas_com_delegacao.append({
+            'formula': formula,
+            'delegacao': delegacao,
+        })
+    
+    # Dados para filtros
+    etapas = Etapa.objects.filter(ativa=True).order_by('sequencia')
+    funcionarios = User.objects.filter(groups__name='Funcionário').order_by('first_name')
+    
+    context = {
+        'page_obj': page_obj,
+        'formulas_com_delegacao': formulas_com_delegacao,
+        'etapas': etapas,
+        'funcionarios': funcionarios,
+        'filtro_etapa': etapa_id,
+        'filtro_funcionario': funcionario_id,
+        'filtro_status': status_filtro,
+        'filtro_nrorc': nrorc,
+        'is_gestor': is_gestor,
+        'is_funcionario': is_funcionario,
+    }
+    
+    return render(request, 'dashboard/tarefas_em_andamento.html', context)
+
+
+@login_required
+@login_required
+@csrf_exempt
+def buscar_funcionarios_ajax(request):
+    """API AJAX para buscar funcionários (para o modal de delegação)"""
+    from django.http import JsonResponse
+    
+    # Permitir funcionários, gerentes e admins
+    is_funcionario = request.user.groups.filter(name='Funcionário').exists()
+    is_gestor = request.user.groups.filter(name__in=['Gerente', 'Superadmin']).exists() or request.user.is_superuser
+    
+    if not (is_funcionario or is_gestor):
+        return JsonResponse({'erro': 'Sem permissão'}, status=403)
+    
+    q = request.GET.get('q', '').strip()
+    
+    if len(q) < 2:
+        return JsonResponse({'funcionarios': []})
+    
+    # Buscar funcionários por nome ou username
+    funcionarios = User.objects.filter(
+        groups__name='Funcionário'
+    ).filter(
+        Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(username__icontains=q)
+    ).values('id', 'first_name', 'last_name', 'username')[:10]
+    
+    resultado = [
+        {
+            'id': f['id'],
+            'nome': f"{f['first_name']} {f['last_name']}" if f['first_name'] or f['last_name'] else f['username'],
+            'username': f['username'],
+        }
+        for f in funcionarios
+    ]
+    
+    return JsonResponse({'funcionarios': resultado})
+
+
+@login_required
+def delegar_formula(request, formula_id):
+    """
+    Delegação de tarefa para outro funcionário
+    Funcionários, Gerentes e Admins podem delegar uma fórmula disponível para outro funcionário
+    """
+    from core.models import DelegacaoTarefa
+    
+    if request.method != 'POST':
+        return redirect('dashboard:formulas_disponiveis')
+    
+    is_funcionario = request.user.groups.filter(name='Funcionário').exists()
+    is_gestor = request.user.groups.filter(name__in=['Gerente', 'Superadmin']).exists() or request.user.is_superuser
+    
+    if not (is_funcionario or is_gestor):
+        return redirect('dashboard:home')
+    
+    formula = get_object_or_404(FormulaItem, id=formula_id)
+    
+    # Validação: fórmula não pode estar já assumida
+    if formula.funcionario_na_etapa:
+        messages.error(request, 'Esta fórmula já foi assumida por outro funcionário.')
+        return redirect('dashboard:formulas_disponiveis')
+    
+    # Validação: status
+    if formula.status not in ['em_triagem', 'em_producao', 'em_qualidade']:
+        messages.error(request, 'Esta fórmula não está disponível.')
+        return redirect('dashboard:formulas_disponiveis')
+    
+    # Obter funcionário delegado
+    funcionario_delegado_id = request.POST.get('funcionario_id')
+    if not funcionario_delegado_id:
+        messages.error(request, 'Selecione um funcionário.')
+        return redirect('dashboard:formulas_disponiveis')
+    
+    try:
+        funcionario_delegado = User.objects.get(
+            id=funcionario_delegado_id,
+            groups__name='Funcionário'
+        )
+    except User.DoesNotExist:
+        messages.error(request, 'Funcionário inexistente.')
+        return redirect('dashboard:formulas_disponiveis')
+    
+    # Validar limite de tarefas do funcionário delegado
+    if formula.etapa_atual and formula.etapa_atual.nome.lower() != 'expedição':
+        tarefas_totais = FormulaItem.objects.filter(
+            funcionario_na_etapa=funcionario_delegado,
+            status__in=['em_triagem', 'em_producao', 'em_qualidade'],
+            eh_tarefa_ativa__in=[True, False]
+        ).count()
+        
+        if tarefas_totais >= 5:
+            messages.error(
+                request,
+                f'{funcionario_delegado.get_full_name()} já tem o máximo de 5 tarefas. Não é possível delegar.'
+            )
+            return redirect('dashboard:formulas_disponiveis')
+        
+        # CORRIGIDO: Pausar TODAS as tarefas ativas do funcionário delegado
+        # e ativar apenas a nova
+        tarefas_ativas = FormulaItem.objects.filter(
+            funcionario_na_etapa=funcionario_delegado,
+            status__in=['em_triagem', 'em_producao', 'em_qualidade'],
+            eh_tarefa_ativa=True
+        )
+        
+        if tarefas_ativas.exists():
+            # Pausar todas as ativas
+            tarefas_ativas.update(eh_tarefa_ativa=False)
+        
+        # Esta será ativa (única tarefa ativa)
+        nova_tarefa_ativa = True
+    else:
+        nova_tarefa_ativa = False
+    
+    # Assumir fórmula para o funcionário delegado
+    formula.funcionario_na_etapa = funcionario_delegado
+    formula.eh_tarefa_ativa = nova_tarefa_ativa
+    formula.save()
+    
+    # Registrar delegação
+    DelegacaoTarefa.objects.create(
+        formula=formula,
+        delegado_por=request.user,  # Quem delegou (pode ser None se for sistema)
+        delegado_para=funcionario_delegado,
+        etapa=formula.etapa_atual
+    )
+    
+    # Garantir apenas 1 ativa para o funcionário delegado
+    _garantir_uma_so_ativa(funcionario_delegado)
+    
+    # Log de auditoria
+    status_log = "ativa" if nova_tarefa_ativa else "pendente"
+    LogAuditoria.objects.create(
+        usuario=request.user,
+        acao='delegar_tarefa',
+        descricao=f'Delegou fórmula NRORC {formula.pedido_mestre.nrorc} na etapa {formula.etapa_atual.nome} para {funcionario_delegado.get_full_name()} ({status_log})',
+        ip_address=request.META.get('REMOTE_ADDR')
+    )
+    
+    status_msg = "ATIVA" if nova_tarefa_ativa else "PENDENTE"
+    messages.success(
+        request,
+        f'✓ Fórmula NRORC {formula.pedido_mestre.nrorc} delegada para {funcionario_delegado.get_full_name()} como {status_msg}! Outras tarefas foram pausadas.'
+    )
+    
+    return redirect('dashboard:formulas_disponiveis')

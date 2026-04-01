@@ -74,21 +74,136 @@
 
             <!-- MAIN CONTENT -->
             <main class="main-content">
-                <!-- Mensagens -->
+                <!-- Notificações Toast -->
                 {% if messages %}
-                    <div style="margin-bottom: 1rem;">
+                    <div style="position: fixed; top: 20px; right: 20px; z-index: 9999; width: auto; max-width: 400px;">
                         {% for message in messages %}
-                            <div class="alert alert-{{ message.tags|default:'primary' }}" role="alert">
-                                <div>
-                                    <i class="bi bi-info-circle"></i>
-                                </div>
-                                <div>
-                                    <div style="font-weight: 600;">Mensagem</div>
-                                    {{ message }}
+                            <div class="toast-notification" style="
+                                background: white;
+                                border-radius: 0.5rem;
+                                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                                margin-bottom: 1rem;
+                                overflow: hidden;
+                                animation: slideIn 0.3s ease-out;
+                            ">
+                                <div style="
+                                    display: flex;
+                                    {% if message.tags == 'error' %}
+                                        border-left: 4px solid #ef4444;
+                                    {% elif message.tags == 'success' %}
+                                        border-left: 4px solid #10b981;
+                                    {% elif message.tags == 'info' %}
+                                        border-left: 4px solid #3b82f6;
+                                    {% else %}
+                                        border-left: 4px solid #8b5cf6;
+                                    {% endif %}
+                                    padding: 1rem;
+                                    gap: 1rem;
+                                ">
+                                    <div style="
+                                        display: flex;
+                                        align-items: center;
+                                        flex-shrink: 0;
+                                    ">
+                                        <i class="bi
+                                            {% if message.tags == 'error' %}
+                                                bi-exclamation-circle
+                                            {% elif message.tags == 'success' %}
+                                                bi-check-circle
+                                            {% elif message.tags == 'info' %}
+                                                bi-info-circle
+                                            {% else %}
+                                                bi-bell
+                                            {% endif %}" style="
+                                            font-size: 1.5rem;
+                                            {% if message.tags == 'error' %}
+                                                color: #ef4444;
+                                            {% elif message.tags == 'success' %}
+                                                color: #10b981;
+                                            {% elif message.tags == 'info' %}
+                                                color: #3b82f6;
+                                            {% else %}
+                                                color: #8b5cf6;
+                                            {% endif %}
+                                        "></i>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="
+                                            font-weight: 600;
+                                            color: #1f2937;
+                                            margin-bottom: 0.25rem;
+                                        ">
+                                            {% if message.tags == 'error' %}
+                                                ❌ Erro
+                                            {% elif message.tags == 'success' %}
+                                                ✅ Sucesso
+                                            {% elif message.tags == 'info' %}
+                                                ℹ️ Informação
+                                            {% else %}
+                                                🔔 Notificação
+                                            {% endif %}
+                                        </div>
+                                        <div style="
+                                            color: #6b7280;
+                                            font-size: 0.9rem;
+                                            line-height: 1.5;
+                                        ">{{ message }}</div>
+                                    </div>
+                                    <button type="button" onclick="this.parentElement.parentElement.style.display='none'" style="
+                                        background: none;
+                                        border: none;
+                                        color: #9ca3af;
+                                        cursor: pointer;
+                                        font-size: 1.25rem;
+                                        padding: 0;
+                                        flex-shrink: 0;
+                                    ">
+                                        <i class="bi bi-x"></i>
+                                    </button>
                                 </div>
                             </div>
                         {% endfor %}
                     </div>
+                    
+                    <style>
+                        @keyframes slideIn {
+                            from {
+                                transform: translateX(400px);
+                                opacity: 0;
+                            }
+                            to {
+                                transform: translateX(0);
+                                opacity: 1;
+                            }
+                        }
+                        
+                        @keyframes slideOut {
+                            from {
+                                transform: translateX(0);
+                                opacity: 1;
+                            }
+                            to {
+                                transform: translateX(400px);
+                                opacity: 0;
+                            }
+                        }
+                        
+                        .toast-notification {
+                            animation-fill-mode: forwards;
+                        }
+                    </style>
+                    
+                    <script>
+                        // Auto-hide toasts após 5 segundos
+                        document.querySelectorAll('.toast-notification').forEach(toast => {
+                            setTimeout(() => {
+                                toast.style.animation = 'slideOut 0.3s ease-out';
+                                setTimeout(() => {
+                                    toast.style.display = 'none';
+                                }, 300);
+                            }, 5000);
+                        });
+                    </script>
                 {% endif %}
                 
                 {% block content %}{% endblock %}

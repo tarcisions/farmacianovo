@@ -91,6 +91,19 @@
         </div>
     </div>
 
+    <!-- KPI: Fila Retirada -->
+    <div class="card">
+        <div class="stat-card">
+            <div class="stat-value">
+                <div class="stat-label">Fila Retirada</div>
+                <div class="stat-number">{{ total_retirada }}</div>
+            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #fbbf24, #fcd34d); color: #b45309;">
+                <i class="bi bi-bag-check"></i>
+            </div>
+        </div>
+    </div>
+
     <!-- KPI: Expedidos -->
     <div class="card">
         <div class="stat-card">
@@ -132,6 +145,11 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link" id="retirada-tab" data-bs-toggle="tab" data-bs-target="#retirada" type="button" role="tab" aria-controls="retirada" aria-selected="false">
+            <i class="bi bi-bag-check"></i> Retirada <span class="badge bg-warning">{{ total_retirada }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link" id="historico-tab" data-bs-toggle="tab" data-bs-target="#historico" type="button" role="tab" aria-controls="historico" aria-selected="false">
             <i class="bi bi-clock-history"></i> Histórico <span class="badge bg-success">{{ total_expedidos }}</span>
         </button>
@@ -146,7 +164,7 @@
         <div class="card">
             <div class="card-header bg-info text-white">
                 <h5 class="mb-0">Pedidos Prontos para Expedição</h5>
-                <small>Escolha a rota (Motoboy ou Sedex) para cada pedido</small>
+                <small>Escolha a rota (Motoboy, Sedex ou Retirada) para cada pedido</small>
             </div>
             <div class="card-body">
                 {% if pedidos_prontos %}
@@ -195,12 +213,19 @@
                                                class="btn btn-outline-secondary" title="Enviar via Sedex">
                                                 <i class="bi bi-box-seam"></i> Sedex
                                             </a>
+                                            <a href="{% url 'dashboard:pedido_escolher_rota' pedido.id 'retirada' %}" 
+                                               class="btn btn-outline-success" title="Marcar para Retirada">
+                                                <i class="bi bi-bag-check"></i> Retirada
+                                            </a>
                                         {% else %}
                                             <button type="button" class="btn btn-outline-warning" disabled title="{{ pedido.motivo_nao_pode_ir_rota }}">
                                                 <i class="bi bi-lock"></i> Motoboy
                                             </button>
                                             <button type="button" class="btn btn-outline-secondary" disabled title="{{ pedido.motivo_nao_pode_ir_rota }}">
                                                 <i class="bi bi-lock"></i> Sedex
+                                            </button>
+                                            <button type="button" class="btn btn-outline-success" disabled title="{{ pedido.motivo_nao_pode_ir_rota }}">
+                                                <i class="bi bi-lock"></i> Retirada
                                             </button>
                                         {% endif %}
                                     </div>
@@ -339,8 +364,10 @@
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <!-- BOTÃO ENVIAR -->
                         <div class="mt-3">
-                            <button type="submit" class="btn btn-warning" id="btn-enviar-motoboy" disabled>
+                            <button type="button" class="btn btn-warning" id="btn-enviar-motoboy" disabled data-bs-toggle="modal" data-bs-target="#modalEnviarMotoboy" onclick="prepararModalMotoboy()">
                                 <i class="bi bi-send"></i> Enviar Selecionados
                             </button>
                         </div>
@@ -432,8 +459,10 @@
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <!-- BOTÃO ENVIAR -->
                         <div class="mt-3">
-                            <button type="submit" class="btn btn-secondary" id="btn-enviar-sedex" disabled>
+                            <button type="button" class="btn btn-secondary" id="btn-enviar-sedex" disabled data-bs-toggle="modal" data-bs-target="#modalEnviarSedex" onclick="prepararModalSedex()">
                                 <i class="bi bi-send"></i> Enviar Selecionados
                             </button>
                         </div>
@@ -447,7 +476,101 @@
         </div>
     </div>
 
-    <!-- TAB 4: HISTÓRICO -->
+    <!-- TAB 4: FILA RETIRADA -->
+    <div class="tab-pane fade" id="retirada" role="tabpanel" aria-labelledby="retirada-tab">
+        <div class="card">
+            <div class="card-header bg-warning text-white">
+                <h5 class="mb-0">Fila Retirada - Aguardando Cliente</h5>
+                <small>Selecione quais pedidos foram retirados pelo cliente</small>
+            </div>
+            <div class="card-body">
+                {% if fila_retirada %}
+                    <form method="POST" action="{% url 'dashboard:finalizar_rota' 'retirada' %}">
+                        {% csrf_token %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="50px">
+                                            <input type="checkbox" class="form-check-input" id="select-all-retirada" onchange="toggleAll(this)">
+                                        </th>
+                                        <th style="width: 40px;"></th>
+                                        <th>NRORC</th>
+                                        <th>Fórmulas</th>
+                                        <th>Data Adição</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pedido in fila_retirada %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" class="form-check-input pedido-checkbox-retirada" 
+                                                   name="pedidos_selecionados" value="{{ pedido.id }}">
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-retirada-{{ pedido.id }}" aria-expanded="false">
+                                                <i class="bi bi-chevron-down"></i>
+                                            </button>
+                                        </td>
+                                        <td><strong>#{{ pedido.nrorc }}</strong></td>
+                                        <td><span class="badge bg-warning">{{ pedido.formulas.count }}</span></td>
+                                        <td><small>{{ pedido.criado_em|date:"d/m/Y H:i" }}</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="5" class="p-0">
+                                            <div class="collapse" id="collapse-retirada-{{ pedido.id }}">
+                                                <div class="card card-body bg-light">
+                                                    <strong>Fórmulas neste pedido:</strong>
+                                                    <table class="table table-sm mt-2">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th>ID</th>
+                                                                <th>Descrição</th>
+                                                                <th>Forma</th>
+                                                                <th>Volume</th>
+                                                                <th>Qtd</th>
+                                                                <th>Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for formula in pedido.formulas.all %}
+                                                            <tr>
+                                                                <td><small>#{{ formula.id }}</small></td>
+                                                                <td><small>{{ formula.descricao }}</small></td>
+                                                                <td><small>{{ formula.get_tipo_forma }}</small></td>
+                                                                <td><small>{{ formula.get_volume_display }}</small></td>
+                                                                <td><small>{{ formula.quantidade }}</small></td>
+                                                                <td><span class="badge bg-warning">{{ formula.get_status_display }}</span></td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- BOTÃO ENVIAR -->
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-warning" id="btn-enviar-retirada" disabled data-bs-toggle="modal" data-bs-target="#modalEnviarRetirada" onclick="prepararModalRetirada()">
+                                <i class="bi bi-check-circle"></i> Confirmar Retiradas
+                            </button>
+                        </div>
+                    </form>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Nenhum pedido aguardando retirada.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: HISTÓRICO -->
     <div class="tab-pane fade" id="historico" role="tabpanel" aria-labelledby="historico-tab">
         <div class="card">
             <div class="card-header bg-success text-white">
@@ -487,6 +610,14 @@
                                         {% elif expedis.rota_tipo == 'sedex' %}
                                         <span class="badge bg-secondary">
                                             <i class="bi bi-box-seam"></i> Sedex
+                                        </span>
+                                        {% elif expedis.rota_tipo == 'retirada' %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-bag-check"></i> Retirada
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-question-circle"></i> Não definida
                                         </span>
                                         {% endif %}
                                     </td>
@@ -545,6 +676,49 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                        
+                        {# Pagination #}
+                        {% if page_obj.has_other_pages %}
+                        <nav class="d-flex justify-content-between align-items-center" style="margin-top: 1rem;">
+                            <div>
+                                <small class="text-muted">
+                                    Página <strong>{{ page_obj.number }}</strong> de <strong>{{ page_obj.paginator.num_pages }}</strong>
+                                    | Total: <strong>{{ total_expedidos }}</strong> expedições
+                                </small>
+                            </div>
+                            <ul class="pagination mb-0">
+                                {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">Primeira</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">← Anterior</a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if num == page_obj.number %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima →</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
                     </div>
                 {% else %}
                 <div class="alert alert-info">
@@ -555,9 +729,16 @@
         </div>
     </div>
 
-</div>
+\n</div>
 
 <script>
+// ===== VARIÁVEIS GLOBAIS =====
+let rotaAtual = null;
+let pedidosSelecionados = [];
+let funcionarioSelecionadoMotoboy = null;
+let funcionarioSelecionadoSedex = null;
+let funcionarioSelecionadoRetirada = null;
+
 function toggleAll(checkbox) {
     const isChecked = checkbox.checked;
     const selectedTab = document.querySelector('.nav-link.active').getAttribute('data-bs-target');
@@ -568,33 +749,624 @@ function toggleAll(checkbox) {
     } else if (selectedTab === '#sedex') {
         document.querySelectorAll('.pedido-checkbox-sedex').forEach(cb => cb.checked = isChecked);
         updateButtonState('sedex');
+    } else if (selectedTab === '#retirada') {
+        document.querySelectorAll('.pedido-checkbox-retirada').forEach(cb => cb.checked = isChecked);
+        updateButtonState('retirada');
     }
 }
 
-document.querySelectorAll('.pedido-checkbox').forEach(cb => {
-    cb.addEventListener('change', () => updateButtonState('motoboy'));
-});
-
-document.querySelectorAll('.pedido-checkbox-sedex').forEach(cb => {
-    cb.addEventListener('change', () => updateButtonState('sedex'));
-});
-
 function updateButtonState(rota) {
-    const selector = rota === 'motoboy' ? '.pedido-checkbox' : '.pedido-checkbox-sedex';
+    let selector;
+    if (rota === 'motoboy') {
+        selector = '.pedido-checkbox';
+    } else if (rota === 'sedex') {
+        selector = '.pedido-checkbox-sedex';
+    } else if (rota === 'retirada') {
+        selector = '.pedido-checkbox-retirada';
+    }
+    
     const checked = document.querySelectorAll(selector + ':checked').length;
     const btn = document.getElementById(`btn-enviar-${rota}`);
     
+    if (!btn) return; // Sair se botão não existe
+    
     if (checked > 0) {
         btn.disabled = false;
-        btn.innerHTML = `<i class="bi bi-send"></i> Enviar ${checked} Pedido(s)`;
+        if (rota === 'retirada') {
+            btn.innerHTML = `<i class="bi bi-check-circle"></i> Confirmar ${checked} Retirada(s)`;
+        } else {
+            btn.innerHTML = `<i class="bi bi-send"></i> Enviar ${checked} Pedido(s)`;
+        }
     } else {
         btn.disabled = true;
-        btn.innerHTML = `<i class="bi bi-send"></i> Enviar Selecionados`;
+        if (rota === 'retirada') {
+            btn.innerHTML = `<i class="bi bi-check-circle"></i> Confirmar Retiradas`;
+        } else {
+            btn.innerHTML = `<i class="bi bi-send"></i> Enviar Selecionados`;
+        }
     }
 }
 
-// Inicializar botões
-updateButtonState('motoboy');
-updateButtonState('sedex');
+// Anexar event listeners aos checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.pedido-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => updateButtonState('motoboy'));
+    });
+    document.querySelectorAll('.pedido-checkbox-sedex').forEach(cb => {
+        cb.addEventListener('change', () => updateButtonState('sedex'));
+    });
+    document.querySelectorAll('.pedido-checkbox-retirada').forEach(cb => {
+        cb.addEventListener('change', () => updateButtonState('retirada'));
+    });
+    
+    // Inicializar botões
+    updateButtonState('motoboy');
+    updateButtonState('sedex');
+    updateButtonState('retirada');
+    
+    // ===== BUSCA DE FUNCIONÁRIOS - ADICIONAR EVENT LISTENERS =====
+    document.getElementById('busca-modal-motoboy')?.addEventListener('input', function(e) {
+        buscarFuncionarioModal('motoboy');
+    });
+
+    document.getElementById('busca-modal-sedex')?.addEventListener('input', function(e) {
+        buscarFuncionarioModal('sedex');
+    });
+
+    document.getElementById('busca-modal-retirada')?.addEventListener('input', function(e) {
+        buscarFuncionarioModal('retirada');
+    });
+});
+
+function prepararModalMotoboy() {
+    rotaAtual = 'motoboy';
+    pedidosSelecionados = Array.from(document.querySelectorAll('.pedido-checkbox:checked')).map(c => c.value);
+    limparModalRota('motoboy');
+}
+
+function toggleAssumiuModal(rota) {
+    const btn = document.getElementById(`btn-assumir-${rota}`);
+    const buscaInput = document.getElementById(`busca-modal-${rota}`);
+    const containerTabela = document.getElementById(`containerTabela-modal-${rota}`);
+    
+    // Verificar se já está selecionado
+    const jaEstaAssumido = btn.classList.contains('btn-success');
+    
+    if (jaEstaAssumido) {
+        // Deselecionar - voltar para outline
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-success');
+        btn.innerHTML = '<i class="bi bi-circle"></i> Sou Eu - ' + (rota === 'retirada' ? 'Realizei a retirada' : 'Vou fazer a expedição');
+        
+        // Habilitar busca
+        if (buscaInput) buscaInput.disabled = false;
+        
+        // Remover seleção
+        removerSeleçãoModal(rota);
+    } else {
+        // Selecionar - mudar para filled green
+        btn.classList.remove('btn-outline-success');
+        btn.classList.add('btn-success');
+        btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Sou Eu - ' + (rota === 'retirada' ? 'Realizei a retirada' : 'Vou fazer a expedição');
+        
+        // Desabilitar busca
+        if (buscaInput) buscaInput.disabled = true;
+        if (containerTabela) containerTabela.style.display = 'none';
+        
+        // Selecionar como "você"
+        selecionarFuncionarioModal(rota, -1, 'Você');
+    }
+}
+
+function prepararModalSedex() {
+    rotaAtual = 'sedex';
+    pedidosSelecionados = Array.from(document.querySelectorAll('.pedido-checkbox-sedex:checked')).map(c => c.value);
+    limparModalRota('sedex');
+}
+
+function prepararModalRetirada() {
+    rotaAtual = 'retirada';
+    pedidosSelecionados = Array.from(document.querySelectorAll('.pedido-checkbox-retirada:checked')).map(c => c.value);
+    limparModalRota('retirada');
+}
+
+function limparModalRota(rota) {
+    const busca = document.getElementById(`busca-modal-${rota}`);
+    const corpo = document.getElementById(`corpoTabela-modal-${rota}`);
+    const container = document.getElementById(`containerTabela-modal-${rota}`);
+    const msg = document.getElementById(`mensagemVazio-modal-${rota}`);
+    const selecionado = document.getElementById(`selecionado-modal-${rota}`);
+    const input = document.getElementById(`funcionario-modal-${rota}`);
+    const btn = document.getElementById(`btn-enviar-modal-${rota}`);
+    
+    if (busca) busca.value = '';
+    if (corpo) corpo.innerHTML = '';
+    if (container) container.style.display = 'none';
+    if (msg) msg.style.display = 'none';
+    if (selecionado) selecionado.style.display = 'none';
+    if (input) input.value = '';
+    if (btn) btn.disabled = true;
+}
+
+function selecionarFuncionarioModal(rota, id, nome) {
+    const busca = document.getElementById(`busca-modal-${rota}`);
+    const corpo = document.getElementById(`corpoTabela-modal-${rota}`);
+    const container = document.getElementById(`containerTabela-modal-${rota}`);
+    const msg = document.getElementById(`mensagemVazio-modal-${rota}`);
+    const selecionado = document.getElementById(`selecionado-modal-${rota}`);
+    const nomeElement = document.getElementById(`nome-modal-${rota}`);
+    const input = document.getElementById(`funcionario-modal-${rota}`);
+    const btn = document.getElementById(`btn-enviar-modal-${rota}`);
+    
+    if (id === -1) {
+        // Assumir (você)
+        if (input) input.value = '';
+        if (selecionado) selecionado.style.display = 'none';
+        if (btn) btn.disabled = false;
+    } else {
+        // Delegar para alguém
+        if (input) input.value = id;
+        if (nomeElement) nomeElement.textContent = nome;
+        if (selecionado) selecionado.style.display = 'block';
+        if (btn) btn.disabled = false;
+    }
+    
+    if (busca) busca.value = '';
+    if (corpo) corpo.innerHTML = '';
+    if (container) container.style.display = 'none';
+    if (msg) msg.style.display = 'none';
+}
+
+function removerSeleçãoModal(rota) {
+    const input = document.getElementById(`funcionario-modal-${rota}`);
+    const selecionado = document.getElementById(`selecionado-modal-${rota}`);
+    const busca = document.getElementById(`busca-modal-${rota}`);
+    const corpo = document.getElementById(`corpoTabela-modal-${rota}`);
+    const container = document.getElementById(`containerTabela-modal-${rota}`);
+    const msg = document.getElementById(`mensagemVazio-modal-${rota}`);
+    const btn = document.getElementById(`btn-enviar-modal-${rota}`);
+    
+    if (input) input.value = '';
+    if (selecionado) selecionado.style.display = 'none';
+    if (busca) busca.value = '';
+    if (corpo) corpo.innerHTML = '';
+    if (container) container.style.display = 'none';
+    if (msg) msg.style.display = 'none';
+    if (btn) btn.disabled = true;
+}
+
+function buscarFuncionarioModal(rota) {
+    const busca = document.getElementById(`busca-modal-${rota}`);
+    const quemd = busca ? busca.value.trim() : '';
+    const corpo = document.getElementById(`corpoTabela-modal-${rota}`);
+    const container = document.getElementById(`containerTabela-modal-${rota}`);
+    const msg = document.getElementById(`mensagemVazio-modal-${rota}`);
+    
+    if (!corpo || !container || !msg) {
+        console.error(`Elementos do modal ${rota} não encontrados`);
+        return;
+    }
+    
+    if (quemd.length < 2) {
+        container.style.display = 'none';
+        msg.style.display = 'none';
+        corpo.innerHTML = '';
+        return;
+    }
+    
+    fetch(`/dashboard/api/buscar-funcionarios/?q=${encodeURIComponent(quemd)}`)
+        .then(r => r.json())
+        .then(data => {
+            corpo.innerHTML = '';
+            
+            if (data.funcionarios.length === 0) {
+                container.style.display = 'none';
+                msg.style.display = 'block';
+            } else {
+                msg.style.display = 'none';
+                container.style.display = 'block';
+                
+                data.funcionarios.forEach((func) => {
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid #e2e8f0';
+                    tr.style.transition = 'background 0.2s';
+                    tr.onmouseover = () => tr.style.background = '#f8fafc';
+                    tr.onmouseout = () => tr.style.background = 'transparent';
+                    
+                    tr.innerHTML = `
+                        <td style="padding: 0.75rem; color: #0f172a; font-weight: 500;">
+                            <i class="bi bi-person-circle" style="color: #4f46e5; margin-right: 0.5rem;"></i>
+                            ${func.nome}
+                        </td>
+                        <td style="padding: 0.75rem; color: #64748b; font-size: 0.9rem;">
+                            @${func.username}
+                        </td>
+                        <td style="padding: 0.75rem; text-align: center;">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selecionarFuncionarioModal('${rota}', ${func.id}, '${func.nome}')">
+                                <i class="bi bi-check-circle"></i> Selecionar
+                            </button>
+                        </td>
+                    `;
+                    
+                    corpo.appendChild(tr);
+                });
+            }
+        })
+        .catch(err => {
+            console.error(`Erro ao buscar funcionários:`, err);
+            container.style.display = 'none';
+            msg.style.display = 'block';
+            msg.innerHTML = '<i class="bi bi-exclamation-triangle" style="font-size: 2rem; display: block; margin-bottom: 0.5rem; color: #ef4444;"></i><small style="color: #ef4444;">Erro ao buscar funcionários</small>';
+        });
+}
+
+function enviarRotaViaModal(rota) {
+    if (!pedidosSelecionados || pedidosSelecionados.length === 0) {
+        alert('Selecione pelo menos um pedido');
+        return;
+    }
+    
+    // Criar e submeter um formulário oculto
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/dashboard/rotas/finalizar/${rota}/`;
+    
+    // Adicionar CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken.value;
+        form.appendChild(csrfInput);
+    }
+    
+    // Adicionar pedidos selecionados
+    pedidosSelecionados.forEach(pedidoId => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'pedidos_selecionados';
+        input.value = pedidoId;
+        form.appendChild(input);
+    });
+    
+    // Adicionar funcionário responsável (se houver)
+    const funcInput = document.getElementById(`funcionario-modal-${rota}`);
+    if (funcInput && funcInput.value) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'funcionario_responsavel_id';
+        input.value = funcInput.value;
+        form.appendChild(input);
+    }
+    
+    // Submeter
+    document.body.appendChild(form);
+    form.submit();
+}
 </script>
+
+<!-- MODAL MOTOBOY -->
+<div class="modal fade" id="modalEnviarMotoboy" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                <h5 class="modal-title">
+                    <i class="bi bi-truck" style="color: #d97706;"></i> Enviar via Motoboy
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body" style="padding: 2rem;">
+                <div style="background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); padding: 1.5rem; border-radius: 0.75rem; margin-bottom: 2rem; color: white;">
+                    <small style="font-weight: 600; opacity: 0.9;">ROTA SELECIONADA</small>
+                    <div style="margin-top: 0.75rem;">
+                        <h6 style="margin: 0; font-size: 1rem;">Envio via Motoboy</h6>
+                    </div>
+                </div>
+                
+                <!-- Busca de Funcionário -->
+                <div style="margin-bottom: 1.5rem;">
+                    <h6 style="color: #0f172a; margin-bottom: 1rem; font-weight: 700;">Quem será responsável?</h6>
+                    
+                    <!-- OPÇÃO 1: ASSUMIR -->
+                    <button type="button" id="btn-assumir-motoboy" class="btn btn-outline-success" style="border-width: 2px; font-weight: 600;" onclick="toggleAssumiuModal('motoboy')">
+                        <i class="bi bi-circle"></i> Sou Eu - Vou fazer a expedição
+                    </button>
+                    
+                    <hr style="margin: 1.5rem 0;">
+                    
+                    <!-- OPÇÃO 2: DELEGAR -->
+                    <label style="font-weight: 700; margin-bottom: 0.75rem; display: block; color: #0f172a; font-size: 0.95rem;">
+                        <i class="bi bi-search"></i> ou Delegar para Outro Funcionário
+                    </label>
+                    <input 
+                        type="text" 
+                        id="busca-modal-motoboy"
+                        class="form-control" 
+                        placeholder="Ex: Maria, João, carla..."
+                        autocomplete="off"
+                        style="padding: 0.75rem; font-size: 0.95rem; border: 2px solid #e2e8f0; margin-bottom: 0.5rem;"
+                    >
+                    <small style="color: #64748b; margin-bottom: 1rem; display: block;">
+                        💡 Digite pelo menos 2 caracteres. Busca por nome ou usuário.
+                    </small>
+                    
+                    <!-- Lista de Funcionários em Tabela -->
+                    <div id="containerTabela-modal-motoboy" style="display: none; margin-top: 1.5rem;">
+                        <small style="color: #64748b; font-weight: 600; display: block; margin-bottom: 0.75rem;">
+                            Resultados encontrados:
+                        </small>
+                        <div style="overflow-y: auto; max-height: 350px; border: 1px solid #e2e8f0; border-radius: 0.5rem;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead style="background: #f1f5f9; position: sticky; top: 0;">
+                                    <tr>
+                                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Nome Completo
+                                        </th>
+                                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Usuário
+                                        </th>
+                                        <th style="padding: 0.75rem; text-align: center; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Ação
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpoTabela-modal-motoboy">
+                                    <!-- Preenchido via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Mensagem de vazio -->
+                    <div id="mensagemVazio-modal-motoboy" style="display: none; text-align: center; padding: 2rem; color: #94a3b8;">
+                        <i class="bi bi-inbox" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
+                        <small>Nenhum funcionário encontrado</small>
+                    </div>
+                </div>
+                
+                <!-- Funcionário Selecionado -->
+                <div id="selecionado-modal-motoboy" style="margin-top: 1.5rem; display: none;">
+                    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1.25rem; border-radius: 0.75rem; color: white;">
+                        <small style="font-weight: 600; opacity: 0.9;">✓ DELEGADO PARA:</small>
+                        <div style="margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="font-size: 1rem;" id="nome-modal-motoboy"></strong>
+                            <button type="button" class="btn btn-sm" onclick="removerSeleçãoModal('motoboy')" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.4rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-weight: 600;">
+                                <i class="bi bi-x"></i> Remover
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <input type="hidden" id="funcionario-modal-motoboy" value="">
+            </div>
+            
+            <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 1rem; background: #f8fafc;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-warning" id="btn-enviar-modal-motoboy" disabled onclick="enviarRotaViaModal('motoboy')">
+                    <i class="bi bi-send"></i> Enviar Agora
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL SEDEX -->
+<div class="modal fade" id="modalEnviarSedex" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                <h5 class="modal-title">
+                    <i class="bi bi-box-seam" style="color: #6b7280;"></i> Enviar via Sedex
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body" style="padding: 2rem;">
+                <div style="background: linear-gradient(135deg, #d1d5db 0%, #6b7280 100%); padding: 1.5rem; border-radius: 0.75rem; margin-bottom: 2rem; color: white;">
+                    <small style="font-weight: 600; opacity: 0.9;">ROTA SELECIONADA</small>
+                    <div style="margin-top: 0.75rem;">
+                        <h6 style="margin: 0; font-size: 1rem;">Envio via Sedex</h6>
+                    </div>
+                </div>
+                
+                <!-- Busca de Funcionário -->
+                <div style="margin-bottom: 1.5rem;">
+                    <h6 style="color: #0f172a; margin-bottom: 1rem; font-weight: 700;">Quem será responsável?</h6>
+                    
+                    <!-- OPÇÃO 1: ASSUMIR -->
+                    <button type="button" id="btn-assumir-sedex" class="btn btn-outline-success" style="border-width: 2px; font-weight: 600;" onclick="toggleAssumiuModal('sedex')">
+                        <i class="bi bi-circle"></i> Sou Eu - Vou fazer a expedição
+                    </button>
+                    
+                    <hr style="margin: 1.5rem 0;">
+                    
+                    <!-- OPÇÃO 2: DELEGAR -->
+                    <label style="font-weight: 700; margin-bottom: 0.75rem; display: block; color: #0f172a; font-size: 0.95rem;">
+                        <i class="bi bi-search"></i> ou Delegar para Outro Funcionário
+                    </label>
+                    <input 
+                        type="text" 
+                        id="busca-modal-sedex"
+                        class="form-control" 
+                        placeholder="Ex: Maria, João, carla..."
+                        autocomplete="off"
+                        style="padding: 0.75rem; font-size: 0.95rem; border: 2px solid #e2e8f0; margin-bottom: 0.5rem;"
+                    >
+                    <small style="color: #64748b; margin-bottom: 1rem; display: block;">
+                        💡 Digite pelo menos 2 caracteres. Busca por nome ou usuário.
+                    </small>
+                    
+                    <!-- Lista de Funcionários em Tabela -->
+                    <div id="containerTabela-modal-sedex" style="display: none; margin-top: 1.5rem;">
+                        <small style="color: #64748b; font-weight: 600; display: block; margin-bottom: 0.75rem;">
+                            Resultados encontrados:
+                        </small>
+                        <div style="overflow-y: auto; max-height: 350px; border: 1px solid #e2e8f0; border-radius: 0.5rem;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead style="background: #f1f5f9; position: sticky; top: 0;">
+                                    <tr>
+                                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Nome Completo
+                                        </th>
+                                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Usuário
+                                        </th>
+                                        <th style="padding: 0.75rem; text-align: center; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Ação
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpoTabela-modal-sedex">
+                                    <!-- Preenchido via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Mensagem de vazio -->
+                    <div id="mensagemVazio-modal-sedex" style="display: none; text-align: center; padding: 2rem; color: #94a3b8;">
+                        <i class="bi bi-inbox" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
+                        <small>Nenhum funcionário encontrado</small>
+                    </div>
+                </div>
+                
+                <!-- Funcionário Selecionado -->
+                <div id="selecionado-modal-sedex" style="margin-top: 1.5rem; display: none;">
+                    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1.25rem; border-radius: 0.75rem; color: white;">
+                        <small style="font-weight: 600; opacity: 0.9;">✓ DELEGADO PARA:</small>
+                        <div style="margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="font-size: 1rem;" id="nome-modal-sedex"></strong>
+                            <button type="button" class="btn btn-sm" onclick="removerSeleçãoModal('sedex')" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.4rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-weight: 600;">
+                                <i class="bi bi-x"></i> Remover
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <input type="hidden" id="funcionario-modal-sedex" value="">
+            </div>
+            
+            <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 1rem; background: #f8fafc;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-secondary" id="btn-enviar-modal-sedex" disabled onclick="enviarRotaViaModal('sedex')">
+                    <i class="bi bi-send"></i> Enviar Agora
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL RETIRADA -->
+<div class="modal fade" id="modalEnviarRetirada" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                <h5 class="modal-title">
+                    <i class="bi bi-bag-check" style="color: #059669;"></i> Confirmar Retirada
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body" style="padding: 2rem;">
+                <div style="background: linear-gradient(135deg, #a7f3d0 0%, #059669 100%); padding: 1.5rem; border-radius: 0.75rem; margin-bottom: 2rem; color: white;">
+                    <small style="font-weight: 600; opacity: 0.9;">ROTA SELECIONADA</small>
+                    <div style="margin-top: 0.75rem;">
+                        <h6 style="margin: 0; font-size: 1rem;">Retirada pelo Cliente</h6>
+                    </div>
+                </div>
+                
+                <!-- Busca de Funcionário -->
+                <div style="margin-bottom: 1.5rem;">
+                    <h6 style="color: #0f172a; margin-bottom: 1rem; font-weight: 700;">Quem realizou a retirada?</h6>
+                    
+                    <!-- OPÇÃO 1: ASSUMIR -->
+                    <button type="button" id="btn-assumir-retirada" class="btn btn-outline-success" style="border-width: 2px; font-weight: 600;" onclick="toggleAssumiuModal('retirada')">
+                        <i class="bi bi-circle"></i> Sou Eu - Realizei a retirada
+                    </button>
+                    
+                    <hr style="margin: 1.5rem 0;">
+                    
+                    <!-- OPÇÃO 2: DELEGAR -->
+                    <label style="font-weight: 700; margin-bottom: 0.75rem; display: block; color: #0f172a; font-size: 0.95rem;">
+                        <i class="bi bi-search"></i> ou Registrar Outro Funcionário
+                    </label>
+                    <input 
+                        type="text" 
+                        id="busca-modal-retirada"
+                        class="form-control" 
+                        placeholder="Ex: Maria, João, carla..."
+                        autocomplete="off"
+                        style="padding: 0.75rem; font-size: 0.95rem; border: 2px solid #e2e8f0; margin-bottom: 0.5rem;"
+                    >
+                    <small style="color: #64748b; margin-bottom: 1rem; display: block;">
+                        💡 Digite pelo menos 2 caracteres. Busca por nome ou usuário.
+                    </small>
+                    
+                    <!-- Lista de Funcionários em Tabela -->
+                    <div id="containerTabela-modal-retirada" style="display: none; margin-top: 1.5rem;">
+                        <small style="color: #64748b; font-weight: 600; display: block; margin-bottom: 0.75rem;">
+                            Resultados encontrados:
+                        </small>
+                        <div style="overflow-y: auto; max-height: 350px; border: 1px solid #e2e8f0; border-radius: 0.5rem;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead style="background: #f1f5f9; position: sticky; top: 0;">
+                                    <tr>
+                                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Nome Completo
+                                        </th>
+                                        <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Usuário
+                                        </th>
+                                        <th style="padding: 0.75rem; text-align: center; font-weight: 600; color: #0f172a; border-bottom: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                            Ação
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpoTabela-modal-retirada">
+                                    <!-- Preenchido via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Mensagem de vazio -->
+                    <div id="mensagemVazio-modal-retirada" style="display: none; text-align: center; padding: 2rem; color: #94a3b8;">
+                        <i class="bi bi-inbox" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
+                        <small>Nenhum funcionário encontrado</small>
+                    </div>
+                </div>
+                
+                <!-- Funcionário Selecionado -->
+                <div id="selecionado-modal-retirada" style="margin-top: 1.5rem; display: none;">
+                    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1.25rem; border-radius: 0.75rem; color: white;">
+                        <small style="font-weight: 600; opacity: 0.9;">✓ REGISTRADO PARA:</small>
+                        <div style="margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="font-size: 1rem;" id="nome-modal-retirada"></strong>
+                            <button type="button" class="btn btn-sm" onclick="removerSeleçãoModal('retirada')" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.4rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-weight: 600;">
+                                <i class="bi bi-x"></i> Remover
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <input type="hidden" id="funcionario-modal-retirada" value="">
+            </div>
+            
+            <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 1rem; background: #f8fafc;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-success" id="btn-enviar-modal-retirada" disabled onclick="enviarRotaViaModal('retirada')">
+                    <i class="bi bi-check-circle"></i> Confirmar Retirada
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

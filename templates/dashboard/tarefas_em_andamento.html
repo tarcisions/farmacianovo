@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Tarefas em Andamento{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-start;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+            <i class="bi bi-hourglass-split" style="color: #4f46e5;"></i> Tarefas em Andamento
+        </h1>
+        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Todas as tarefas que estão sendo executadas</p>
+    </div>
+    <a href="{% url 'dashboard:formulas_disponiveis' %}" class="btn btn-secondary">
+        <i class="bi bi-list-check"></i> Fórmulas Disponíveis
+    </a>
+</div>
+
+<!-- FILTROS -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <h3 class="card-title">
+            <i class="bi bi-funnel" style="color: #4f46e5;"></i>
+            Filtros
+        </h3>
+    </div>
+
+    <div style="padding: 1.5rem;">
+        <form method="get" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 1rem; align-items: flex-end;">
+            <div>
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">NRORC</label>
+                <input type="text" class="form-control" name="nrorc" placeholder="Buscar..." value="{{ filtro_nrorc }}">
+            </div>
+            <div>
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Etapa</label>
+                <select name="etapa" class="form-select">
+                    <option value="">-- Todas --</option>
+                    {% for etapa in etapas %}
+                    <option value="{{ etapa.id }}" {% if filtro_etapa|stringformat:"s" == etapa.id|stringformat:"s" %}selected{% endif %}>
+                        {{ etapa.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Funcionário</label>
+                <select name="funcionario" class="form-select">
+                    <option value="">-- Todos --</option>
+                    {% for func in funcionarios %}
+                    <option value="{{ func.id }}" {% if filtro_funcionario|stringformat:"s" == func.id|stringformat:"s" %}selected{% endif %}>
+                        {{ func.get_full_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">-- Todos --</option>
+                    <option value="ativo" {% if filtro_status == "ativo" %}selected{% endif %}>Ativo</option>
+                    <option value="pendente" {% if filtro_status == "pendente" %}selected{% endif %}>Pendente</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'dashboard:tarefas_em_andamento' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Limpar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- TABELA -->
+{% if page_obj %}
+<div class="card shadow-sm">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 2rem;">
+            <h3 class="card-title" style="margin: 0;">
+                <i class="bi bi-table"></i> Tarefas
+            </h3>
+            <small style="color: #64748b; white-space: nowrap; padding: 0.5rem 1rem; background: #f1f5f9; border-radius: 0.375rem;">
+                {% if is_paginated %}
+                Exibindo {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ page_obj.paginator.count }}
+                {% else %}
+                Total: {{ page_obj.paginator.count }}
+                {% endif %}
+            </small>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div style="overflow-x: auto;">
+            <table class="table">
+                <thead class="bg-light border-bottom">
+                    <tr>
+                        <th style="width: 90px;"><i class="bi bi-hash"></i> NRORC</th>
+                        <th><i class="bi bi-file-text"></i> Descrição</th>
+                        <th style="width: 100px;"><i class="bi bi-box"></i> Forma</th>
+                        <th style="width: 120px;"><i class="bi bi-diagram-3"></i> Etapa</th>
+                        <th style="width: 150px;"><i class="bi bi-person"></i> Funcionário</th>
+                        <th style="width: 120px;"><i class="bi bi-person-check"></i> Status</th>
+                        <th style="width: 150px;"><i class="bi bi-arrow-left-right"></i> Delegado Por</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in formulas_com_delegacao %}
+                    <tr>
+                        <td>
+                            <span class="badge bg-primary fs-6" style="white-space: nowrap;">
+                                {{ item.formula.pedido_mestre.nrorc }}-{{ item.formula.serieo }}
+                            </span>
+                        </td>
+                        <td>
+                            <small class="text-dark">{{ item.formula.descricao }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ item.formula.get_tipo_forma }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ item.formula.etapa_atual.nome }}</span>
+                        </td>
+                        <td>
+                            <strong style="color: #4f46e5;">
+                                {% if item.delegacao and item.delegacao.delegado_para == item.formula.funcionario_na_etapa %}
+                                <i class="bi bi-arrow-right-circle" style="color: #0d9488; margin-right: 0.25rem;" title="Delegado"></i>
+                                {% endif %}
+                                {{ item.formula.funcionario_na_etapa.get_full_name|default:item.formula.funcionario_na_etapa.username }}
+                            </strong>
+                        </td>
+                        <td>
+                            {% if item.formula.eh_tarefa_ativa %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-play-fill"></i> Ativo
+                            </span>
+                            {% else %}
+                            <span class="badge bg-warning" style="color: #191e23;">
+                                <i class="bi bi-hourglass-split"></i> Pendente
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.delegacao %}
+                            <small style="color: #0f172a;">
+                                {% if item.delegacao.delegado_por %}
+                                <i class="bi bi-person-fill" style="color: #0d9488;"></i>
+                                {{ item.delegacao.delegado_por.get_full_name }}
+                                <br>
+                                <span style="font-size: 0.8rem; color: #94a3b8;">
+                                    {{ item.delegacao.data_delegacao|date:"d/m/Y H:i" }}
+                                </span>
+                                {% else %}
+                                <span style="color: #94a3b8;">Auto-assumida</span>
+                                {% endif %}
+                            </small>
+                            {% else %}
+                            <span style="color: #94a3b8; font-size: 0.9rem;">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Paginação -->
+{% if is_paginated and page_obj.has_other_pages %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1">
+                <i class="bi bi-skip-start"></i> Primeira
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                <i class="bi bi-chevron-left"></i> Anterior
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-skip-start"></i></span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-left"></i></span>
+        </li>
+        {% endif %}
+        
+        <li class="page-item active">
+            <span class="page-link">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </span>
+        </li>
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                Próxima <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">
+                Última <i class="bi bi-skip-end"></i>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-right"></i></span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-skip-end"></i></span>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<!-- Vazio -->
+<div class="card shadow-sm">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-inbox fs-1 text-muted mb-3 d-block"></i>
+        <h5 class="text-muted">Nenhuma tarefa em andamento</h5>
+        <p class="text-muted small">Todas as tarefas foram concluídas. Acesse "Fórmulas Disponíveis" para começar novas tarefas.</p>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
