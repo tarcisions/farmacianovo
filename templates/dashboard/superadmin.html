@@ -5,6 +5,106 @@
 
 {% block extra_css %}
 <style>
+    .page-header {
+        margin-bottom: var(--spacing-lg);
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    @media (min-width: 768px) {
+        .page-header {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+    }
+
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin: 0;
+    }
+
+    @media (min-width: 768px) {
+        .page-header h1 {
+            font-size: 2rem;
+        }
+    }
+
+    .page-header p {
+        color: var(--text-secondary);
+        margin: 0.5rem 0 0 0;
+        font-size: 0.95rem;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        border-radius: 0.5rem;
+    }
+
+    .stat-value {
+        flex: 1;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--text-primary);
+    }
+
+    .stat-subtitle {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+
+    .stat-card {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--spacing-md);
+    }
+
+    .table-wrapper-sm {
+        overflow-x: auto;
+        border-radius: 0.5rem;
+    }
+
+    .card-content {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .card-content .btn {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+
+    @media (max-width: 639px) {
+        .chart-container {
+            height: 250px;
+        }
+    }
+
     .nav-tabs { margin-bottom: 0 !important; }
     .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
     .tab-pane { display: none; }
@@ -14,10 +114,10 @@
 
 {% block content %}
 <!-- PAGE HEADER -->
-<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+<div class="page-header">
     <div>
-        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">Dashboard Administrativo</h1>
-        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Visão geral completa da operação do sistema</p>
+        <h1>Dashboard Administrativo</h1>
+        <p>Visão geral completa da operação do sistema</p>
     </div>
     <a href="{% url 'dashboard:exportar_relatorio_superadmin' %}" class="btn btn-primary">
         <i class="bi bi-download"></i> Exportar Dados
@@ -25,7 +125,7 @@
 </div>
 
 <!-- STATS GRID -->
-<div class="grid-4">
+<div class="grid-4 mb-3">
     <!-- Stat Card: Pedidos -->
     <div class="card">
         <div class="stat-card">
@@ -84,7 +184,7 @@
 </div>
 
 <!-- MAIN GRID -->
-<div class="grid-2">
+<div class="grid-2 mb-3">
     <!-- RECENT ACTIVITY CARD -->
     <div class="card">
         <div class="card-header">
@@ -125,7 +225,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="3" class="text-center text-muted" style="padding: 2rem;">
+                        <td colspan="3" class="text-center text-muted" style="padding: var(--spacing-lg);">
                             Nenhuma atividade
                         </td>
                     </tr>
@@ -143,15 +243,15 @@
         </h3>
 
         <div class="card-content">
-            <a href="{% url 'core:usuarios' %}" class="btn btn-secondary" style="width: 100%; justify-content: flex-start;">
+            <a href="{% url 'core:usuarios' %}" class="btn btn-secondary">
                 <i class="bi bi-people"></i>
                 Gerenciar Usuários
             </a>
-            <a href="{% url 'core:criar_usuario' %}" class="btn btn-secondary" style="width: 100%; justify-content: flex-start;">
+            <a href="{% url 'core:criar_usuario' %}" class="btn btn-secondary">
                 <i class="bi bi-plus-circle"></i>
                 Novo Usuário
             </a>
-            <a href="{% url 'dashboard:auditoria' %}" class="btn btn-secondary" style="width: 100%; justify-content: flex-start;">
+            <a href="{% url 'dashboard:auditoria' %}" class="btn btn-secondary">
                 <i class="bi bi-shield-check"></i>
                 Ver Auditoria
             </a>
@@ -171,7 +271,7 @@
             <i class="bi bi-pie-chart" style="color: #4f46e5;"></i>
             Status dos Pedidos
         </h3>
-        <div style="position: relative; height: 300px;">
+        <div class="chart-container">
             <canvas id="pedidosChart"></canvas>
         </div>
     </div>
@@ -182,7 +282,7 @@
             <i class="bi bi-bar-chart" style="color: #16a34a;"></i>
             Métricas do Sistema
         </h3>
-        <div style="position: relative; height: 300px;">
+        <div class="chart-container">
             <canvas id="metricsChart"></canvas>
         </div>
     </div>

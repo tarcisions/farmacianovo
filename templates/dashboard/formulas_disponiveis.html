@@ -60,18 +60,18 @@
             </h3>
         </div>
 
-        <div style="padding: 1.5rem;">
-            <form method="get" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: flex-end;">
+        <div style="padding: 1rem;">
+            <form method="get" class="form-row" style="align-items: flex-end;">
                 <div>
-                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">NRORC</label>
+                    <label class="form-label">NRORC</label>
                     <input type="text" class="form-control" name="nrorc" placeholder="Ex: 73022" value="{{ filtro_nrorc }}">
                 </div>
                 <div>
-                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Descrição</label>
+                    <label class="form-label">Descrição</label>
                     <input type="text" class="form-control" name="descricao" placeholder="Buscar fórmula..." value="{{ filtro_descricao }}">
                 </div>
                 <div>
-                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Etapa</label>
+                    <label class="form-label">Etapa</label>
                     <select name="etapa" class="form-select">
                         <option value="">-- Todas as Etapas --</option>
                         {% for etapa in etapas %}
@@ -81,11 +81,11 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button type="submit" class="btn btn-primary">
+                <div style="display: flex; gap: 0.5rem; width: 100%; margin-top: var(--spacing-sm);">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">
                         <i class="bi bi-search"></i> Filtrar
                     </button>
-                    <a href="{% url 'dashboard:formulas_disponiveis' %}" class="btn btn-secondary">
+                    <a href="{% url 'dashboard:formulas_disponiveis' %}" class="btn btn-secondary" style="flex: 1;">
                         <i class="bi bi-x-circle"></i> Limpar
                     </a>
                 </div>
@@ -127,22 +127,22 @@
                     <tbody>
                         {% for formula in page_obj %}
                         <tr>
-                            <td>
+                            <td data-label="NRORC">
                                 <span class="badge bg-primary fs-6" style="white-space: nowrap;">{{ formula.pedido_mestre.nrorc }}-{{ formula.serieo }}</span>
                             </td>
-                            <td>
+                            <td data-label="Descrição">
                                 <small class="text-dark">{{ formula.descricao }}</small>
                                 {% if formula.pedido_mestre.observacoes %}
                                 <br><small class="text-muted">{{ formula.pedido_mestre.observacoes|truncatewords:5 }}</small>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Forma">
                                 <span class="badge bg-info">{{ formula.get_tipo_forma }}</span>
                             </td>
-                            <td>
+                            <td data-label="Volume">
                                 <code class="text-warning">{{ formula.get_volume_display }}</code>
                             </td>
-                            <td>
+                            <td data-label="Data e Hora">
                                 <small class="text-muted">
                                     {% if formula.datetime_atualizacao_api %}
                                         {{ formula.datetime_atualizacao_api|date:"d/m/Y H:i" }}
@@ -151,10 +151,10 @@
                                     {% endif %}
                                 </small>
                             </td>
-                            <td>
+                            <td data-label="Etapa">
                                 <span class="badge bg-secondary">{{ formula.etapa_atual.nome }}</span>
                             </td>
-                            <td style="text-align: center;">
+                            <td data-label="Ação" style="text-align: center;">
                                 {% if is_funcionario %}
                                 <div style="display: flex; gap: 0.5rem; justify-content: center;">
                                     <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalAssumir" onclick="prepararModalAssumir({{ formula.id }}, '{{ formula.pedido_mestre.nrorc }}')" title="Assumir para você">

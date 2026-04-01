@@ -4,15 +4,37 @@
 
 {% block extra_css %}
 <style>
-    .nav-tabs { margin-bottom: 0 !important; }
-    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
-    .tab-pane { display: none; }
-    .tab-pane.show.active { display: block; }
+    .page-header {
+        margin-bottom: var(--spacing-lg);
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
 
-    .card-header h5 {
+    @media (min-width: 768px) {
+        .page-header {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+    }
+
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
         margin: 0;
-        font-weight: 700;
-        color: #0f172a;
+    }
+
+    @media (min-width: 768px) {
+        .page-header h1 {
+            font-size: 2rem;
+        }
+    }
+
+    .page-header p {
+        color: var(--text-secondary);
+        margin: 0.5rem 0 0 0;
+        font-size: 0.95rem;
     }
 
     .badge-custom {
@@ -22,9 +44,52 @@
         font-weight: 600;
     }
 
-    .card-body h3 {
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-lg);
+    }
+
+    @media (min-width: 640px) {
+        .stats-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .stats-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    .stat-box {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-lg);
+    }
+
+    .stat-box h3 {
         font-weight: 700;
         color: #111827;
+        margin: 0;
+        font-size: 1.75rem;
+    }
+
+    .stat-box p {
+        color: #64748b;
+        margin: 0 0 0.25rem 0;
+        font-size: 0.875rem;
+    }
+
+    .stat-icon {
+        font-size: 2.5rem;
+        flex-shrink: 0;
+    }
+
+    .progress {
+        height: 30px;
     }
 
     .progress-bar strong {
@@ -32,163 +97,144 @@
         font-weight: 600;
     }
 
-    .table thead th {
-        background: #f9fafb;
-        color: #4f46e5;
-        font-weight: 600;
+    .card-header h5 {
+        margin: 0;
+        font-weight: 700;
+        color: #0f172a;
     }
 
-    .table tbody td {
-        vertical-align: middle;
+    .chart-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 300px;
     }
 
-    .btn-outline-secondary {
-        color: #4f46e5;
-        border-color: #e2e8f0;
-        font-size: 0.85rem;
+    @media (max-width: 639px) {
+        .chart-container {
+            min-height: 250px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- PAGE HEADER -->
-<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+<div class="page-header">
     <div>
-        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+        <h1>
             <i class="bi bi-speedometer2" style="color: #4f46e5;"></i> Meu Dashboard
         </h1>
-        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Acompanhe seus pontos, pedidos e bônus</p>
+        <p>Acompanhe seus pontos, pedidos e bônus</p>
     </div>
     <span class="badge badge-custom bg-success">Funcionário</span>
 </div>
 
 <!-- CARDS DE ESTATÍSTICAS -->
-<div class="row g-3 mb-4">
-    {% comment %} Pontos do Mês {% endcomment %}
-    <div class="col-md-6 col-lg-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <p class="text-muted mb-1 small">
-                        <i class="bi bi-star-fill text-warning"></i> Pontos do Mês
-                    </p>
-                    <h3 class="mb-0">{{ pontos_mes_atual|floatformat:1 }}</h3>
-                </div>
-                <div class="text-warning" style="font-size: 2.5rem;">
-                    <i class="bi bi-star-fill"></i>
-                </div>
+<div class="stats-grid">
+    <!-- Pontos do Mês -->
+    <div class="card">
+        <div class="stat-box">
+            <div>
+                <p><i class="bi bi-star-fill text-warning"></i> Pontos do Mês</p>
+                <h3>{{ pontos_mes_atual|floatformat:1 }}</h3>
+            </div>
+            <div class="stat-icon text-warning">
+                <i class="bi bi-star-fill"></i>
             </div>
         </div>
     </div>
 
-    {% comment %} Pedidos Ativos {% endcomment %}
-    <div class="col-md-6 col-lg-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <p class="text-muted mb-1 small">
-                        <i class="bi bi-list-task"></i> Pedidos Ativos
-                    </p>
-                    <h3 class="mb-0">{{ pedidos_trabalhados }}</h3>
-                </div>
-                <div class="text-info" style="font-size: 2.5rem;">
-                    <i class="bi bi-list-task"></i>
-                </div>
+    <!-- Pedidos Ativos -->
+    <div class="card">
+        <div class="stat-box">
+            <div>
+                <p><i class="bi bi-list-task"></i> Pedidos Ativos</p>
+                <h3>{{ pedidos_trabalhados }}</h3>
+            </div>
+            <div class="stat-icon text-info">
+                <i class="bi bi-list-task"></i>
             </div>
         </div>
     </div>
 
-    {% comment %} Etapas Concluídas {% endcomment %}
-    <div class="col-md-6 col-lg-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <p class="text-muted mb-1 small">
-                        <i class="bi bi-check-circle"></i> Etapas Concluídas
-                    </p>
-                    <h3 class="mb-0">{{ etapas_concluidas|length }}</h3>
-                </div>
-                <div class="text-success" style="font-size: 2.5rem;">
-                    <i class="bi bi-check-circle-fill"></i>
-                </div>
+    <!-- Etapas Concluídas -->
+    <div class="card">
+        <div class="stat-box">
+            <div>
+                <p><i class="bi bi-check-circle"></i> Etapas Concluídas</p>
+                <h3>{{ etapas_concluidas|length }}</h3>
+            </div>
+            <div class="stat-icon text-success">
+                <i class="bi bi-check-circle-fill"></i>
             </div>
         </div>
     </div>
 
-    {% comment %} Bônus Estimado {% endcomment %}
-    <div class="col-md-6 col-lg-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <p class="text-muted mb-1 small">
-                        <i class="bi bi-cash-coin"></i> Bônus Estimado
-                    </p>
-                    <h3 class="mb-0">{% if faixa_bonus %}R$ {{ faixa_bonus.valor_em_reais|floatformat:2 }}{% else %}R$ 0,00{% endif %}</h3>
-                </div>
-                <div class="text-success" style="font-size: 2.5rem;">
-                    <i class="bi bi-cash-coin"></i>
-                </div>
+    <!-- Bônus Estimado -->
+    <div class="card">
+        <div class="stat-box">
+            <div>
+                <p><i class="bi bi-cash-coin"></i> Bônus Estimado</p>
+                <h3>{% if faixa_bonus %}R$ {{ faixa_bonus.valor_em_reais|floatformat:2 }}{% else %}R$ 0,00{% endif %}</h3>
+            </div>
+            <div class="stat-icon text-success">
+                <i class="bi bi-cash-coin"></i>
             </div>
         </div>
     </div>
 </div>
 
 <!-- PROGRESSO BÔNUS -->
-<div class="row g-3 mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-light border-bottom">
-                <h5><i class="bi bi-trophy"></i> Progresso para Próximo Bônus</h5>
-            </div>
-            <div class="card-body">
-                {% if faixa_bonus %}
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small">Faixa Atual: <strong>{{ faixa_bonus.faixa_min|floatformat:0 }} - {{ faixa_bonus.faixa_max|floatformat:0 }} pts</strong></span>
-                        <span class="badge bg-success">R$ {{ faixa_bonus.valor_em_reais|floatformat:2 }}</span>
-                    </div>
-                    <div class="progress" style="height: 30px;">
-                        <div class="progress-bar bg-success" role="progressbar"
-                             style="width: {% widthratio pontos_mes_atual faixa_bonus.faixa_max 100 %}%;"
-                             aria-valuenow="{{ pontos_mes_atual }}" aria-valuemin="0" aria-valuemax="{{ faixa_bonus.faixa_max }}">
-                            <strong>{{ pontos_mes_atual|floatformat:0 }} / {{ faixa_bonus.faixa_max|floatformat:0 }} pts</strong>
-                        </div>
+<div class="mb-3">
+    <div class="card">
+        <div class="card-header bg-light border-bottom">
+            <h5><i class="bi bi-trophy"></i> Progresso para Próximo Bônus</h5>
+        </div>
+        <div class="card-body">
+            {% if faixa_bonus %}
+            <div class="mb-3">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted small">Faixa Atual: <strong>{{ faixa_bonus.faixa_min|floatformat:0 }} - {{ faixa_bonus.faixa_max|floatformat:0 }} pts</strong></span>
+                    <span class="badge bg-success">R$ {{ faixa_bonus.valor_em_reais|floatformat:2 }}</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar bg-success" role="progressbar"
+                         style="width: {% widthratio pontos_mes_atual faixa_bonus.faixa_max 100 %}%;"
+                         aria-valuenow="{{ pontos_mes_atual }}" aria-valuemin="0" aria-valuemax="{{ faixa_bonus.faixa_max }}">
+                        <strong>{{ pontos_mes_atual|floatformat:0 }} / {{ faixa_bonus.faixa_max|floatformat:0 }} pts</strong>
                     </div>
                 </div>
-                <p class="text-muted small mb-0">
-                    <i class="bi bi-info-circle"></i> Você está na faixa de bônus <strong>R$ {{ faixa_bonus.valor_em_reais|floatformat:2 }}</strong>
-                </p>
-                {% else %}
-                <div class="alert alert-info mb-0">
-                    <i class="bi bi-lightbulb"></i> Continue trabalhando para alcançar uma faixa de bônus!
-                </div>
-                {% endif %}
             </div>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-info-circle"></i> Você está na faixa de bônus <strong>R$ {{ faixa_bonus.valor_em_reais|floatformat:2 }}</strong>
+            </p>
+            {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-lightbulb"></i> Continue trabalhando para alcançar uma faixa de bônus!
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
 <!-- GRÁFICOS -->
-<div class="row g-3">
-    <div class="col-lg-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-light border-bottom">
-                <h5><i class="bi bi-graph-up"></i> Evolução de Pontos</h5>
-            </div>
-            <div class="card-body d-flex justify-content-center align-items-center" style="min-height: 300px;">
-                <canvas id="pontosChart"></canvas>
-            </div>
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header bg-light border-bottom">
+            <h5><i class="bi bi-graph-up"></i> Evolução de Pontos</h5>
+        </div>
+        <div class="card-body chart-container">
+            <canvas id="pontosChart"></canvas>
         </div>
     </div>
 
-    <div class="col-lg-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-light border-bottom">
-                <h5><i class="bi bi-list-check"></i> Pedidos por Etapa</h5>
-            </div>
-            <div class="card-body d-flex justify-content-center align-items-center" style="min-height: 300px;">
-                <canvas id="etapasChart"></canvas>
-            </div>
+    <div class="card">
+        <div class="card-header bg-light border-bottom">
+            <h5><i class="bi bi-list-check"></i> Pedidos por Etapa</h5>
+        </div>
+        <div class="card-body chart-container">
+            <canvas id="etapasChart"></canvas>
         </div>
     </div>
 </div>

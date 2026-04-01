@@ -4,22 +4,206 @@
 
 {% block extra_css %}
 <style>
-    .nav-tabs { margin-bottom: 0 !important; }
-    .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
-    .tab-pane { display: none; }
-    .tab-pane.show.active { display: block; }
+    .page-header {
+        margin-bottom: var(--spacing-lg);
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    @media (min-width: 768px) {
+        .page-header {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+    }
+
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin: 0;
+    }
+
+    @media (min-width: 768px) {
+        .page-header h1 {
+            font-size: 2rem;
+        }
+    }
+
+    .page-header p {
+        color: var(--text-secondary);
+        margin: 0.5rem 0 0 0;
+        font-size: 0.95rem;
+    }
+
+    .header-actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    @media (min-width: 768px) {
+        .header-actions {
+            flex-direction: row;
+            align-items: center;
+            width: auto;
+        }
+    }
+
+    .badge-role {
+        background: #cffafe;
+        color: #0369a1;
+        padding: 0.4rem 1rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    .form-filter {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+        align-items: flex-end;
+    }
+
+    @media (min-width: 640px) {
+        .form-filter {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .form-filter {
+            grid-template-columns: 1fr 1fr auto;
+        }
+    }
+
+    .form-filter-actions {
+        display: flex;
+        gap: var(--spacing-sm);
+        flex-direction: column;
+    }
+
+    @media (min-width: 640px) {
+        .form-filter-actions {
+            flex-direction: row;
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .form-filter-actions {
+            grid-column: auto;
+        }
+    }
+
+    .stat-icon-cyan {
+        width: 60px;
+        height: 60px;
+        border-radius: 0.5rem;
+        background: #cffafe;
+        color: #0369a1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .stat-icon-green {
+        width: 60px;
+        height: 60px;
+        border-radius: 0.5rem;
+        background: #dcfce7;
+        color: #16a34a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .stat-icon-indigo {
+        width: 60px;
+        height: 60px;
+        border-radius: 0.5rem;
+        background: #e0e7ff;
+        color: #4f46e5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .stat-icon-amber {
+        width: 60px;
+        height: 60px;
+        border-radius: 0.5rem;
+        background: #fef3c7;
+        color: #d97706;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .stat-content {
+        flex: 1;
+    }
+
+    .stat-content-label {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-content-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--text-primary);
+    }
+
+    .stat-content-hint {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+
+    .medal {
+        font-size: 1.2rem;
+    }
+
+    .chart-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    @media (min-width: 768px) {
+        .chart-container {
+            padding: var(--spacing-lg);
+            text-align: center;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- PAGE HEADER -->
-<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+<div class="page-header">
     <div>
-        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">Dashboard da Equipe</h1>
-        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Acompanhe o desempenho e produção da sua equipe</p>
+        <h1>Dashboard da Equipe</h1>
+        <p>Acompanhe o desempenho e produção da sua equipe</p>
     </div>
-    <div style="display: flex; align-items: center; gap: 1rem;">
-        <span style="display: inline-block; background: #cffafe; color: #0369a1; padding: 0.4rem 1rem; border-radius: 9999px; font-weight: 600; font-size: 0.85rem;">Gerente</span>
+    <div class="header-actions">
+        <span class="badge-role">Gerente</span>
         <a href="{% url 'dashboard:exportar_relatorio_gerente' %}" class="btn btn-primary btn-sm">
             <i class="bi bi-download"></i> Exportar Relatório
         </a>
@@ -27,18 +211,18 @@
 </div>
 
 <!-- FILTROS -->
-<div class="card" style="margin-bottom: 2rem;">
-    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+<div class="card mb-3">
+    <div class="card-header">
         <h3 class="card-title">
             <i class="bi bi-funnel" style="color: #4f46e5;"></i>
             Filtros
         </h3>
     </div>
 
-    <div style="padding: 1.5rem;">
-        <form method="get" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: flex-end;">
-            <div>
-                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Funcionário</label>
+    <div class="p-3">
+        <form method="get" class="form-filter">
+            <div class="form-group">
+                <label class="form-label">Funcionário</label>
                 <select name="funcionario" class="form-select" onchange="this.form.submit()">
                     <option value="">Todos</option>
                     {% for func in todos_funcionarios %}
@@ -49,8 +233,8 @@
                 </select>
             </div>
 
-            <div>
-                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Status</label>
+            <div class="form-group">
+                <label class="form-label">Status</label>
                 <select name="status" class="form-select" onchange="this.form.submit()">
                     <option value="">Todos</option>
                     <option value="em_fluxo" {% if status_selecionado == "em_fluxo" %}selected{% endif %}>Em Fluxo</option>
@@ -59,7 +243,7 @@
                 </select>
             </div>
 
-            <div style="display: flex; gap: 0.5rem;">
+            <div class="form-filter-actions">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-search"></i> Filtrar
                 </button>
@@ -71,60 +255,60 @@
     </div>
 </div>
 
-<!-- STATS GRID - 4 colunas -->
-<div class="grid-4">
+<!-- STATS GRID -->
+<div class="grid-4 mb-3">
     <!-- Em Andamento -->
     <div class="card">
-        <div style="display: flex; align-items: flex-start; gap: 1rem;">
-            <div style="width: 60px; height: 60px; border-radius: 0.5rem; background: #cffafe; color: #0369a1; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+        <div class="stat-card">
+            <div class="stat-icon-cyan">
                 <i class="bi bi-hourglass-split"></i>
             </div>
-            <div style="flex: 1;">
-                <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Em Andamento</div>
-                <div style="font-size: 1.8rem; font-weight: 800; color: #0f172a;">{{ pedidos_em_fluxo }}</div>
-                <small style="color: #94a3b8;">Pedidos em processamento</small>
+            <div class="stat-content">
+                <div class="stat-content-label">Em Andamento</div>
+                <div class="stat-content-value">{{ pedidos_em_fluxo }}</div>
+                <div class="stat-content-hint">Pedidos em processamento</div>
             </div>
         </div>
     </div>
 
     <!-- Concluídos -->
     <div class="card">
-        <div style="display: flex; align-items: flex-start; gap: 1rem;">
-            <div style="width: 60px; height: 60px; border-radius: 0.5rem; background: #dcfce7; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+        <div class="stat-card">
+            <div class="stat-icon-green">
                 <i class="bi bi-check-circle-fill"></i>
             </div>
-            <div style="flex: 1;">
-                <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Concluídos (Mês)</div>
-                <div style="font-size: 1.8rem; font-weight: 800; color: #0f172a;">{{ pedidos_concluidos_mes }}</div>
-                <small style="color: #94a3b8;">Pedidos finalizados</small>
+            <div class="stat-content">
+                <div class="stat-content-label">Concluídos (Mês)</div>
+                <div class="stat-content-value">{{ pedidos_concluidos_mes }}</div>
+                <div class="stat-content-hint">Pedidos finalizados</div>
             </div>
         </div>
     </div>
 
     <!-- Funcionários -->
     <div class="card">
-        <div style="display: flex; align-items: flex-start; gap: 1rem;">
-            <div style="width: 60px; height: 60px; border-radius: 0.5rem; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+        <div class="stat-card">
+            <div class="stat-icon-indigo">
                 <i class="bi bi-people-fill"></i>
             </div>
-            <div style="flex: 1;">
-                <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Funcionários</div>
-                <div style="font-size: 1.8rem; font-weight: 800; color: #0f172a;">{{ pontuacao_funcionarios|length }}</div>
-                <small style="color: #94a3b8;">Na sua equipe</small>
+            <div class="stat-content">
+                <div class="stat-content-label">Funcionários</div>
+                <div class="stat-content-value">{{ pontuacao_funcionarios|length }}</div>
+                <div class="stat-content-hint">Na sua equipe</div>
             </div>
         </div>
     </div>
 
     <!-- Pontos -->
     <div class="card">
-        <div style="display: flex; align-items: flex-start; gap: 1rem;">
-            <div style="width: 60px; height: 60px; border-radius: 0.5rem; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+        <div class="stat-card">
+            <div class="stat-icon-amber">
                 <i class="bi bi-star-fill"></i>
             </div>
-            <div style="flex: 1;">
-                <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Pontos Distribuídos</div>
-                <div style="font-size: 1.8rem; font-weight: 800; color: #0f172a;">{{ total_pontos_distribuidos|floatformat:2|default:"0" }}</div>
-                <small style="color: #94a3b8;">Neste mês</small>
+            <div class="stat-content">
+                <div class="stat-content-label">Pontos Distribuídos</div>
+                <div class="stat-content-value">{{ total_pontos_distribuidos|floatformat:2|default:"0" }}</div>
+                <div class="stat-content-hint">Neste mês</div>
             </div>
         </div>
     </div>
@@ -134,21 +318,21 @@
 <div class="grid-2">
     <!-- TOP 10 FUNCIONÁRIOS -->
     <div class="card">
-        <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <div class="card-header">
             <h3 class="card-title">
                 <i class="bi bi-trophy" style="color: #f59e0b;"></i>
                 Top 10 Funcionários (Mês)
             </h3>
         </div>
 
-        <div style="max-height: 400px; overflow-y: auto;">
+        <div class="chart-container">
             <table class="table">
                 <thead>
                     <tr>
-                        <th style="text-align: center;">Pos</th>
+                        <th style="text-align: center; width: 60px;">Pos</th>
                         <th>Nome</th>
-                        <th style="text-align: right;">Pontos</th>
-                        <th style="text-align: right;">Bônus</th>
+                        <th style="text-align: right; width: 100px;">Pontos</th>
+                        <th style="text-align: right; width: 120px;">Bônus</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -156,20 +340,20 @@
                     <tr>
                         <td style="text-align: center;">
                             {% if forloop.counter == 1 %}
-                                <span style="font-size: 1.2rem;">🥇</span>
+                                <span class="medal">🥇</span>
                             {% elif forloop.counter == 2 %}
-                                <span style="font-size: 1.2rem;">🥈</span>
+                                <span class="medal">🥈</span>
                             {% elif forloop.counter == 3 %}
-                                <span style="font-size: 1.2rem;">🥉</span>
+                                <span class="medal">🥉</span>
                             {% else %}
-                                <span class="badge" style="background: #f1f5f9; color: #0f172a;">{{ forloop.counter }}</span>
+                                <span class="badge badge-primary">{{ forloop.counter }}</span>
                             {% endif %}
                         </td>
                         <td><strong>{{ item.funcionario.get_full_name }}</strong></td>
                         <td style="text-align: right; font-weight: 600;">{{ item.pontos|floatformat:2 }}</td>
                         <td style="text-align: right;">
                             {% if item.faixa %}
-                                <span class="badge" style="background: #dcfce7; color: #16a34a;">R$ {{ item.faixa.valor_em_reais|floatformat:2 }}</span>
+                                <span class="badge badge-success">R$ {{ item.faixa.valor_em_reais|floatformat:2 }}</span>
                             {% else %}
                                 <span class="badge" style="background: #f1f5f9; color: #64748b;">-</span>
                             {% endif %}
@@ -177,7 +361,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                        <td colspan="4" class="text-center p-4" style="color: var(--text-muted);">
                             Sem dados disponíveis
                         </td>
                     </tr>
@@ -189,14 +373,14 @@
 
     <!-- RESUMO PONTOS -->
     <div class="card">
-        <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+        <div class="card-header">
             <h3 class="card-title">
                 <i class="bi bi-bar-chart" style="color: #16a34a;"></i>
                 Distribuição de Pontos
             </h3>
         </div>
 
-        <div style="padding: 1.5rem; text-align: center;">
+        <div class="chart-container">
             <canvas id="pontuacaoChart" style="max-height: 250px;"></canvas>
         </div>
     </div>

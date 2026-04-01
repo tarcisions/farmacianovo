@@ -1,7 +1,63 @@
 /**
  * AMAREN - Main JavaScript
- * Clean and modular script
+ * Mobile-First Architecture
  */
+
+// ======================================
+// HAMBURGER MENU MANAGEMENT
+// ======================================
+class HamburgerManager {
+  constructor() {
+    this.hamburgerBtn = document.querySelector('.hamburger-btn');
+    this.sidebar = document.querySelector('.sidebar');
+    this.navbar = document.querySelector('.navbar');
+    
+    if (this.hamburgerBtn && this.sidebar) {
+      this.init();
+    }
+  }
+
+  init() {
+    // Toggle menu on hamburger click
+    this.hamburgerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggle();
+    });
+
+    // Close menu when clicking on a link
+    this.sidebar.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => this.close());
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.hamburger-btn') && 
+          !e.target.closest('.sidebar') && 
+          this.sidebar.classList.contains('active')) {
+        this.close();
+      }
+    });
+
+    // Close menu on window resize (when reaching tablet size)
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 768 && this.sidebar.classList.contains('active')) {
+        this.close();
+      }
+    });
+  }
+
+  toggle() {
+    this.hamburgerBtn.classList.toggle('active');
+    this.sidebar.classList.toggle('active');
+    document.body.style.overflow = this.sidebar.classList.contains('active') ? 'hidden' : '';
+  }
+
+  close() {
+    this.hamburgerBtn.classList.remove('active');
+    this.sidebar.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
 
 // ======================================
 // DROPDOWN MANAGEMENT
@@ -20,6 +76,13 @@ class DropdownManager {
     // Close dropdowns when clicking outside
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.dropdown')) {
+        this.closeAll();
+      }
+    });
+
+    // Close on escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
         this.closeAll();
       }
     });
@@ -87,9 +150,95 @@ class TabManager {
 }
 
 // ======================================
+// MODAL MANAGEMENT
+// ======================================
+class ModalManager {
+  constructor() {
+    this.modals = document.querySelectorAll('[data-modal]');
+    this.triggers = document.querySelectorAll('[data-modal-open]');
+    this.init();
+  }
+
+  init() {
+    // Open modals
+    this.triggers.forEach(trigger => {
+      trigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        const modalId = trigger.getAttribute('data-modal-open');
+        this.open(modalId);
+      });
+    });
+
+    // Close modals
+    document.querySelectorAll('[data-modal-close]').forEach(closeBtn => {
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const modal = closeBtn.closest('[data-modal]');
+        if (modal) this.close(modal.getAttribute('data-modal'));
+      });
+    });
+
+    // Close on background click
+    this.modals.forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          this.close(modal.getAttribute('data-modal'));
+        }
+      });
+    });
+
+    // Close on escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeAll();
+      }
+    });
+  }
+
+  open(modalId) {
+    const modal = document.querySelector(`[data-modal="${modalId}"]`);
+    if (modal) {
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  close(modalId) {
+    const modal = document.querySelector(`[data-modal="${modalId}"]`);
+    if (modal) {
+      modal.classList.remove('active');
+      if (!document.querySelector('[data-modal].active')) {
+        document.body.style.overflow = '';
+      }
+    }
+  }
+
+  closeAll() {
+    this.modals.forEach(modal => {
+      modal.classList.remove('active');
+    });
+    document.body.style.overflow = '';
+  }
+}
+
+// ======================================
 // INIT ON DOM READY
 // ======================================
 document.addEventListener('DOMContentLoaded', () => {
+  new HamburgerManager();
   new DropdownManager();
   new TabManager();
+  new ModalManager();
+
+  // Add keyboard navigation for accessibility
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      document.body.classList.add('focus-visible');
+    }
+  });
+
+  document.addEventListener('mousedown', () => {
+    document.body.classList.remove('focus-visible');
+  });
 });
+

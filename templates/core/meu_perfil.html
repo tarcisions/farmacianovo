@@ -2,66 +2,231 @@
 
 {% block title %}Meu Perfil{% endblock %}
 
+{% block extra_css %}
+<style>
+    .page-header {
+        margin-bottom: var(--spacing-lg);
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    @media (min-width: 768px) {
+        .page-header {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+    }
+
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin: 0;
+    }
+
+    @media (min-width: 768px) {
+        .page-header h1 {
+            font-size: 2rem;
+        }
+    }
+
+    .page-header p {
+        color: var(--text-secondary);
+        margin: 0.5rem 0 0 0;
+        font-size: 0.95rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-lg);
+    }
+
+    @media (min-width: 640px) {
+        .stats-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .stats-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    .stat-card {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: var(--spacing-md);
+        align-items: center;
+    }
+
+    .stat-icon {
+        font-size: 2rem;
+        width: 50px;
+        height: 50px;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .stat-value {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+
+    @media (min-width: 640px) {
+        .info-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-lg);
+        flex-direction: column;
+    }
+
+    @media (min-width: 640px) {
+        .action-buttons {
+            flex-direction: row;
+        }
+    }
+
+    .action-buttons .btn {
+        flex: 1;
+    }
+
+    @media (min-width: 640px) {
+        .action-buttons .btn {
+            flex: 0 1 auto;
+        }
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+    }
+
+    @media (min-width: 640px) {
+        .form-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .modal-footer {
+        border-top: 1px solid #e2e8f0;
+        padding-top: var(--spacing-lg);
+    }
+
+    .modal-header {
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-body {
+        padding: var(--spacing-lg);
+    }
+
+    .form-control:disabled {
+        background: #f9fafb;
+    }
+
+    .form-label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: block;
+        color: #0f172a;
+    }
+
+    .form-hint {
+        color: #64748b;
+        margin-top: 0.25rem;
+        display: block;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- PAGE HEADER -->
-<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+<div class="page-header">
     <div>
-        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+        <h1>
             <i class="bi bi-person-circle" style="color: #4f46e5;"></i> Meu Perfil
         </h1>
-        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">@{{ usuario.username }}</p>
+        <p>@{{ usuario.username }}</p>
     </div>
 </div>
 
 <!-- STATS -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+<div class="stats-grid">
     <div class="card">
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;">
+        <div class="stat-card">
             <div>
-                <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Nome Completo</small>
-                <div style="font-size: 1rem; font-weight: 600;">{{ usuario.first_name }} {{ usuario.last_name }}</div>
+                <span class="stat-label">Nome Completo</span>
+                <div class="stat-value">{{ usuario.first_name }} {{ usuario.last_name }}</div>
             </div>
-            <div style="font-size: 2rem; background: linear-gradient(135deg, #e0e7ff, #f0f4ff); width: 50px; height: 50px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: #4f46e5; flex-shrink: 0;">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #e0e7ff, #f0f4ff); color: #4f46e5;">
                 <i class="bi bi-person-fill"></i>
             </div>
         </div>
     </div>
 
     <div class="card">
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;">
+        <div class="stat-card">
             <div>
-                <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Email</small>
-                <div style="font-size: 0.9rem; font-weight: 500;">{{ usuario.email }}</div>
+                <span class="stat-label">Email</span>
+                <div class="stat-value" style="font-size: 0.9rem;">{{ usuario.email }}</div>
             </div>
-            <div style="font-size: 2rem; background: linear-gradient(135deg, #dbeafe, #f0f9ff); width: 50px; height: 50px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: #0369a1; flex-shrink: 0;">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #dbeafe, #f0f9ff); color: #0369a1;">
                 <i class="bi bi-envelope-fill"></i>
             </div>
         </div>
     </div>
 
     <div class="card">
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;">
+        <div class="stat-card">
             <div>
-                <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Status</small>
+                <span class="stat-label">Status</span>
                 {% if usuario.is_active %}
                     <span class="badge" style="background: #dcfce7; color: #16a34a;">Ativo</span>
                 {% else %}
                     <span class="badge" style="background: #fee2e2; color: #dc2626;">Inativo</span>
                 {% endif %}
             </div>
-            <div style="font-size: 2rem; background: linear-gradient(135deg, #dcfce7, #f0fdf4); width: 50px; height: 50px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: #16a34a; flex-shrink: 0;">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #dcfce7, #f0fdf4); color: #16a34a;">
                 <i class="bi bi-check-circle-fill"></i>
             </div>
         </div>
     </div>
 
     <div class="card">
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;">
+        <div class="stat-card">
             <div>
-                <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Acesso em</small>
+                <span class="stat-label">Acesso em</span>
                 <div style="font-size: 0.85rem; color: #64748b;">{{ usuario.last_login|date:"d/m/Y H:i"|default:"Nunca" }}</div>
             </div>
-            <div style="font-size: 2rem; background: linear-gradient(135deg, #fef3c7, #fffbeb); width: 50px; height: 50px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: #d97706; flex-shrink: 0;">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #fef3c7, #fffbeb); color: #d97706;">
                 <i class="bi bi-calendar-fill"></i>
             </div>
         </div>
@@ -70,7 +235,7 @@
 
 <!-- MENSAGENS -->
 {% if messages %}
-    <div style="margin-bottom: 1.5rem;">
+    <div style="margin-bottom: var(--spacing-md);">
         {% for message in messages %}
             <div class="alert alert-{{ message.tags|default:'primary' }}" role="alert" style="margin-bottom: 0.5rem;">
                 <i class="bi bi-info-circle"></i> {{ message }}
@@ -80,7 +245,7 @@
 {% endif %}
 
 <!-- BOTÕES DE AÇÃO -->
-<div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+<div class="action-buttons">
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editarPerfilModal">
         <i class="bi bi-pencil"></i> Editar Perfil
     </button>
@@ -91,19 +256,19 @@
 
 <!-- INFORMAÇÕES ADICIONAIS -->
 <div class="card">
-    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+    <div class="card-header">
         <h3 class="card-title">
             <i class="bi bi-info-circle" style="color: #0369a1;"></i> Informações da Conta
         </h3>
     </div>
-    <div class="card-body" style="padding: 1.5rem;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+    <div class="card-body">
+        <div class="info-grid">
             <div>
-                <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Data de Cadastro</small>
+                <span class="stat-label">Data de Cadastro</span>
                 <p style="font-weight: 600; color: #0f172a; margin: 0;">{{ usuario.date_joined|date:"d/m/Y \à\s H:i" }}</p>
             </div>
             <div>
-                <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Funções</small>
+                <span class="stat-label">Funções</span>
                 {% if usuario.groups.all %}
                     <div>
                         {% for grupo in usuario.groups.all %}
@@ -122,44 +287,44 @@
 <div class="modal fade" id="editarPerfilModal" tabindex="-1" aria-labelledby="editarPerfilLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header" style="border-bottom: 1px solid #e2e8f0;">
+            <div class="modal-header">
                 <h5 class="modal-title" id="editarPerfilLabel">
                     <i class="bi bi-pencil" style="color: #4f46e5;"></i> Editar Informações Pessoais
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <div class="modal-body" style="padding: 1.5rem;">
+            <div class="modal-body">
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="acao" value="editar_perfil">
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-grid">
                         <div>
-                            <label for="first_name" style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Nome</label>
+                            <label for="first_name" class="form-label">Nome</label>
                             <input type="text" class="form-control" id="first_name" name="first_name" 
-                                   value="{{ usuario.first_name }}" required style="padding: 0.75rem 1rem;">
+                                   value="{{ usuario.first_name }}" required>
                         </div>
                         <div>
-                            <label for="last_name" style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Sobrenome</label>
+                            <label for="last_name" class="form-label">Sobrenome</label>
                             <input type="text" class="form-control" id="last_name" name="last_name" 
-                                   value="{{ usuario.last_name }}" required style="padding: 0.75rem 1rem;">
+                                   value="{{ usuario.last_name }}" required>
                         </div>
                     </div>
 
-                    <div style="margin-bottom: 1.5rem;">
-                        <label for="email" style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Email</label>
+                    <div style="margin-bottom: var(--spacing-md);">
+                        <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control" id="email" name="email" 
-                               value="{{ usuario.email }}" required style="padding: 0.75rem 1rem;">
+                               value="{{ usuario.email }}" required>
                     </div>
 
-                    <div style="margin-bottom: 1.5rem;">
-                        <label for="username" style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Nome de Usuário</label>
+                    <div style="margin-bottom: var(--spacing-md);">
+                        <label for="username" class="form-label">Nome de Usuário</label>
                         <input type="text" class="form-control" id="username" 
-                               value="{{ usuario.username }}" disabled style="padding: 0.75rem 1rem; background: #f9fafb;">
-                        <small style="color: #64748b; margin-top: 0.25rem; display: block;">O nome de usuário não pode ser alterado</small>
+                               value="{{ usuario.username }}" disabled>
+                        <span class="form-hint">O nome de usuário não pode ser alterado</span>
                     </div>
 
-                    <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+                    <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="bi bi-x-circle"></i> Cancelar
                         </button>
@@ -177,37 +342,37 @@
 <div class="modal fade" id="trocarSenhaModal" tabindex="-1" aria-labelledby="trocarSenhaLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header" style="border-bottom: 1px solid #e2e8f0;">
+            <div class="modal-header">
                 <h5 class="modal-title" id="trocarSenhaLabel">
                     <i class="bi bi-key" style="color: #d97706;"></i> Trocar Senha
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <div class="modal-body" style="padding: 1.5rem;">
+            <div class="modal-body">
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="acao" value="trocar_senha">
                     
-                    <div style="margin-bottom: 1.5rem;">
-                        <label for="senha_atual" style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Senha Atual</label>
+                    <div style="margin-bottom: var(--spacing-md);">
+                        <label for="senha_atual" class="form-label">Senha Atual</label>
                         <input type="password" class="form-control" id="senha_atual" name="senha_atual" 
-                               placeholder="Digite sua senha atual" required style="padding: 0.75rem 1rem;">
+                               placeholder="Digite sua senha atual" required>
                     </div>
 
-                    <div style="margin-bottom: 1.5rem;">
-                        <label for="senha_nova" style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Nova Senha</label>
+                    <div style="margin-bottom: var(--spacing-md);">
+                        <label for="senha_nova" class="form-label">Nova Senha</label>
                         <input type="password" class="form-control" id="senha_nova" name="senha_nova" 
-                               placeholder="Digite sua nova senha" required style="padding: 0.75rem 1rem;">
-                        <small style="color: #64748b; margin-top: 0.25rem; display: block;">Mínimo 6 caracteres</small>
+                               placeholder="Digite sua nova senha" required>
+                        <span class="form-hint">Mínimo 6 caracteres</span>
                     </div>
 
-                    <div style="margin-bottom: 1.5rem;">
-                        <label for="confirmar_senha" style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Confirmar Nova Senha</label>
+                    <div style="margin-bottom: var(--spacing-md);">
+                        <label for="confirmar_senha" class="form-label">Confirmar Nova Senha</label>
                         <input type="password" class="form-control" id="confirmar_senha" name="confirmar_senha" 
-                               placeholder="Confirme sua nova senha" required style="padding: 0.75rem 1rem;">
+                               placeholder="Confirme sua nova senha" required>
                     </div>
 
-                    <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+                    <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="bi bi-x-circle"></i> Cancelar
                         </button>

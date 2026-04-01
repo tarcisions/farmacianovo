@@ -71,12 +71,11 @@
         </h3>
     </div>
 
-    <div style="padding: 1.5rem;">
-        <form method="get" id="filtros-form"
-              style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 1rem; align-items: flex-end;">
+    <div style="padding: 1rem;">
+        <form method="get" id="filtros-form" class="form-row" style="align-items: flex-end;">
 
             <div>
-                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">
+                <label class="form-label">
                     Nome ou Código
                 </label>
                 <input type="text" class="form-control" name="nome"
@@ -84,7 +83,7 @@
             </div>
 
             <div class="autocomplete-container">
-                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">
+                <label class="form-label">
                     Funcionário
                 </label>
                 <input type="text" class="form-control" id="filtro-funcionario"
@@ -96,7 +95,7 @@
             </div>
 
             <div>
-                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">
+                <label class="form-label">
                     De
                 </label>
                 <input type="date" class="form-control"
@@ -104,18 +103,18 @@
             </div>
 
             <div>
-                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">
+                <label class="form-label">
                     Até
                 </label>
                 <input type="date" class="form-control"
                        name="data_fim" value="{{ filtros.data_fim }}">
             </div>
 
-            <div style="display: flex; gap: 0.5rem;">
-                <button type="submit" class="btn btn-primary">
+            <div style="display: flex; gap: 0.5rem; width: 100%; margin-top: var(--spacing-sm);">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
                     <i class="bi bi-search"></i> Filtrar
                 </button>
-                <a href="{% url 'dashboard:controle_qualidade' %}" class="btn btn-secondary">
+                <a href="{% url 'dashboard:controle_qualidade' %}" class="btn btn-secondary" style="flex: 1;">
                     <i class="bi bi-x-circle"></i> Limpar
                 </a>
             </div>

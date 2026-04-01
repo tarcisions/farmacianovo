@@ -4,6 +4,100 @@
 
 {% block extra_css %}
 <style>
+    .page-header {
+        margin-bottom: var(--spacing-lg);
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    @media (min-width: 768px) {
+        .page-header {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+    }
+
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin: 0;
+    }
+
+    @media (min-width: 768px) {
+        .page-header h1 {
+            font-size: 2rem;
+        }
+    }
+
+    .page-header p {
+        color: var(--text-secondary);
+        margin: 0.5rem 0 0 0;
+        font-size: 0.95rem;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+        align-items: flex-end;
+    }
+
+    @media (min-width: 640px) {
+        .filter-grid {
+            grid-template-columns: 1fr auto;
+        }
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: var(--spacing-sm);
+        flex-direction: column;
+    }
+
+    @media (min-width: 640px) {
+        .filter-actions {
+            flex-direction: row;
+        }
+    }
+
+    .filter-actions .btn {
+        flex: 1;
+    }
+
+    @media (min-width: 640px) {
+        .filter-actions .btn {
+            flex: 0 1 auto;
+        }
+    }
+
+    .form-label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: block;
+        color: #0f172a;
+    }
+
+    .card-header-flex {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    @media (min-width: 640px) {
+        .card-header-flex {
+            flex-direction: row;
+            align-items: center;
+        }
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+    }
+
     .nav-tabs { margin-bottom: 0 !important; }
     .tab-content { border-top: 1px solid #e2e8f0; padding-top: 1.5rem; }
     .tab-pane { display: none; }
@@ -13,12 +107,12 @@
 
 {% block content %}
 <!-- PAGE HEADER -->
-<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+<div class="page-header">
     <div>
-        <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">
+        <h1>
             <i class="bi bi-exclamation-triangle" style="color: #ef4444;"></i> Gestão de Penalizações
         </h1>
-        <p style="color: #64748b; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Histórico de penalizações aplicadas aos funcionários</p>
+        <p>Histórico de penalizações aplicadas aos funcionários</p>
     </div>
     <a href="{% url 'dashboard:criar_penalizacao' %}" class="btn btn-primary">
         <i class="bi bi-plus-circle"></i> Nova Penalização
@@ -26,18 +120,18 @@
 </div>
 
 <!-- FILTROS -->
-<div class="card" style="margin-bottom: 2rem;">
-    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
+<div class="card mb-3">
+    <div class="card-header">
         <h3 class="card-title">
             <i class="bi bi-funnel" style="color: #4f46e5;"></i>
             Filtros
         </h3>
     </div>
 
-    <div style="padding: 1.5rem;">
-        <form method="get" style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: flex-end;">
+    <div class="p-3">
+        <form method="get" class="filter-grid">
             <div>
-                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #0f172a;">Funcionário</label>
+                <label class="form-label">Funcionário</label>
                 <select class="form-select" name="funcionario">
                     <option value="">Todos os funcionários</option>
                     {% for func in funcionarios %}
@@ -47,7 +141,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div style="display: flex; gap: 0.5rem;">
+            <div class="filter-actions">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-search"></i> Filtrar
                 </button>
@@ -61,8 +155,8 @@
 
 <!-- PENALIZAÇÕES TABLE -->
 <div class="card">
-    <div class="card-header" style="border-bottom: 1px solid #e2e8f0;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="card-header">
+        <div class="card-header-flex">
             <h3 class="card-title">
                 <i class="bi bi-list-ul" style="color: #4f46e5;"></i>
                 Histórico de Penalizações
@@ -71,16 +165,16 @@
         </div>
     </div>
 
-    <div style="overflow-x: auto;">
+    <div class="table-wrapper">
         <table class="table">
             <thead>
                 <tr>
-                    <th style="width: 15%;">Data</th>
-                    <th style="width: 18%;">Funcionário</th>
-                    <th style="width: 25%;">Motivo</th>
-                    <th style="width: 12%;">Pontos</th>
-                    <th style="width: 15%;">Aplicada Por</th>
-                    <th style="width: 10%;">Status</th>
+                    <th style="width: 15%;" data-label="Data">Data</th>
+                    <th style="width: 18%;" data-label="Funcionário">Funcionário</th>
+                    <th style="width: 25%;" data-label="Motivo">Motivo</th>
+                    <th style="width: 12%;" data-label="Pontos">Pontos</th>
+                    <th style="width: 15%;" data-label="Aplicada Por">Aplicada Por</th>
+                    <th style="width: 10%;" data-label="Status">Status</th>
                     <th style="width: 15%; text-align: center;">Ações</th>
                 </tr>
             </thead>

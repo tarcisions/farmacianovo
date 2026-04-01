@@ -19,11 +19,18 @@
 </head>
 <body>
     {% if user.is_authenticated %}
-        <!-- NAVBAR -->
+        <!-- NAVBAR with Hamburger Menu -->
         <nav class="navbar">
             <div class="navbar-brand">
                 <i class="bi bi-capsule"></i> Amaren
             </div>
+            
+            <!-- Hamburger Menu Button - Mobile Only -->
+            <button class="hamburger-btn" type="button" aria-label="Menu" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             
             <ul class="navbar-nav">
             </ul>
@@ -39,18 +46,18 @@
                 </div>
                 
                 <div class="dropdown">
-                    <button class="user-avatar" data-dropdown="user-menu">
+                    <button class="user-avatar dropdown-toggle" data-dropdown="user-menu" title="Menu do usuário">
                         {{ user.first_name|first|upper }}
                     </button>
-                    <div class="dropdown-menu" id="user-menu">
-                        <a href="{% url 'core:meu_perfil' %}" class="dropdown-item">
+                    <div class="dropdown-menu" id="user-menu" role="menu">
+                        <a href="{% url 'core:meu_perfil' %}" class="dropdown-item" role="menuitem">
                             <i class="bi bi-person"></i> Meu Perfil
                         </a>
                         
                         <div class="dropdown-divider"></div>
                         <form method="post" action="{% url 'logout' %}" style="margin: 0;">
                             {% csrf_token %}
-                            <button type="submit" class="dropdown-item" style="width: 100%; text-align: left;">
+                            <button type="submit" class="dropdown-item" style="width: 100%; text-align: left;" role="menuitem">
                                 <i class="bi bi-box-arrow-right"></i> Sair
                             </button>
                         </form>
@@ -217,7 +224,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="{% static 'js/main.js' %}"></script>
-    
     {% block extra_js %}{% endblock %}
 </body>
 </html>
